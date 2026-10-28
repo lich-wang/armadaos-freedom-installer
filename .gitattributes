@@ -1,0 +1,23 @@
+* text=auto eol=lf
+
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.ico binary
+*.exe binary
+*.dll binary
+*.efi binary
+*.img binary
+*.bin binary
+*.zip binary
+*.rar binary
+*.7z binary
+*.tar binary
+*.gz binary
+*.xz binary
+*.bz2 binary
+*.zst binary
+*.tgz binary
+*.txz binary
+*.tbz2 binary
+*.tzst binary

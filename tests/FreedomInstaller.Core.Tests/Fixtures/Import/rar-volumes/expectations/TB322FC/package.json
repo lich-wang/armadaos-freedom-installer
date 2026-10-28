@@ -1,0 +1,60 @@
+{
+  "schemaVersion": 1,
+  "packageId": "armadaos-freedom-example",
+  "version": "20261020.freedom.1.cafd1cc",
+  "deviceModel": "TB322FC",
+  "testOnly": true,
+  "compatible": {
+    "soc": "SM8750",
+    "device": "elden"
+  },
+  "artifacts": [
+    {
+      "role": "ostree-seed",
+      "file": "linux-root.squashfs",
+      "bytes": 15,
+      "sha256": "3d7cce3b2fd4bba56298f35ae016ba468208ce877dc3d3ce95866f47a1d36661"
+    },
+    {
+      "role": "kernel",
+      "file": "linux-boot.img",
+      "bytes": 8192,
+      "sha256": "e558e1e5f2823714df20537e041fed07c95d74ae5060832869e82dbdd10ffe38"
+    },
+    {
+      "role": "dtb",
+      "file": "system.vhdx.part",
+      "bytes": 15,
+      "sha256": "2cc8e148e074829effd3e557dbe8cc5b9388b2788c90162a9347ddeb08eca3f6"
+    },
+    {
+      "role": "runtime",
+      "file": "runtime.bin",
+      "bytes": 11,
+      "sha256": "aacb8fa7adafcc15d61665fc58a74f6ed4a0a35553babf7a4978f2adf14c4f8d"
+    }
+  ],
+  "deployment": {
+    "kind": "ostree-offline-seed",
+    "commit": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+    "manifestDigest": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+    "origin": "ostree-image-signed:docker://ghcr.io/mydanyi/armadaos-freedom:stable"
+  },
+  "storage": {
+    "linuxBootBytes": 1073741824,
+    "systemRequiredBytes": 21474836480,
+    "deploymentScratchBytes": 2147483648,
+    "minimumLinuxDataBytes": 8589934592
+  },
+  "bootCompatibility": {
+    "format": "android-boot-v4",
+    "partitionBytes": 100663296,
+    "firmwareVersions": [
+      "TB322FC-example-firmware-1.0.0"
+    ]
+  },
+  "toolsCompatibility": {
+    "installerProtocol": 1,
+    "maintenanceProtocol": 1
+  }
+}

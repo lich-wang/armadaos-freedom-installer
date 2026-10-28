@@ -1,0 +1,71 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>FreedomInstaller.Core</RootNamespace>
+    <AssemblyName>FreedomInstaller.Core</AssemblyName>
+  </PropertyGroup>
+
+  <!-- Requested archive readers: 7z, RAR, TAR, tar.gz, tar.xz, tar.zst and tar.bz2.
+       SharpCompress is a single fully managed, MIT-licensed dependency (net10 supported); no external
+       archiver executable and no native helper is installed or invoked at build or run time. ZIP/ZIP64
+       keeps using System.IO.Compression, so the fast path never goes through this library. -->
+  <ItemGroup>
+    <PackageReference Include="SharpCompress" Version="0.50.6" />
+    <PackageReference Include="System.IO.Ports" Version="10.0.0" />
+  </ItemGroup>
+
+  <!-- Fixed AOSP AVB public test RSA4096 signing material, supplied by the build
+       from outside the source tree. This is a mandatory input: there is no
+       default key, generated key, or unsigned fallback. -->
+  <ItemGroup Condition="'$(BundledAvbSigningKey)' != '' and Exists('$(BundledAvbSigningKey)')">
+    <EmbeddedResource Include="$(BundledAvbSigningKey)"
+                      LogicalName="FreedomInstaller.AvbTestKey.pem"
+                      Link="AvbTestKey.pem"
+                      WithCulture="false" />
+  </ItemGroup>
+
+  <!-- Pinned standard GBL runtime EFI assets (PRC/ROW), supplied by the build from outside the
+       source tree and embedded under fixed logical names only when an existing file is given.
+       They are optional here: there is no default path, no download or generation, and a plain
+       Core build never fails because they are absent. The single-file publish validates them. -->
+  <ItemGroup Condition="'$(BundledGblPrcEfi)' != '' and Exists('$(BundledGblPrcEfi)')">
+    <EmbeddedResource Include="$(BundledGblPrcEfi)"
+                      LogicalName="FreedomInstaller.GblRuntime.Prc.efi"
+                      Link="generic_superfastboot_prc.efi"
+                      WithCulture="false" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(BundledGblRowEfi)' != '' and Exists('$(BundledGblRowEfi)')">
+    <EmbeddedResource Include="$(BundledGblRowEfi)"
+                      LogicalName="FreedomInstaller.GblRuntime.Row.efi"
+                      Link="generic_superfastboot_row.efi"
+                      WithCulture="false" />
+  </ItemGroup>
+
+  <!-- Upstream GBL attribution and the verbatim GNU GPL version 3 text shipped with those assets. -->
+  <ItemGroup>
+    <EmbeddedResource Include="..\..\docs\GblRuntime-NOTICE.txt"
+                      LogicalName="FreedomInstaller.Licenses.Gbl.NOTICE.txt"
+                      WithCulture="false" />
+    <EmbeddedResource Include="..\..\docs\GblRuntime-LICENSE.txt"
+                      LogicalName="FreedomInstaller.Licenses.Gbl.GPL3.txt"
+                      WithCulture="false" />
+  </ItemGroup>
+
+  <!-- Fixed TF-card RAM maintenance helper script; the TF bootstrap embeds it verbatim
+       into the support archive it uploads to the device. -->
+  <ItemGroup>
+    <EmbeddedResource Include="..\..\maintenance\armada_tf.py"
+                      LogicalName="FreedomInstaller.TfMaintenance.Helper.py"
+                      WithCulture="false" />
+  </ItemGroup>
+
+  <Target Name="RequireBundledAvbSigningKey" BeforeTargets="PrepareForBuild">
+    <Error Condition="'$(BundledAvbSigningKey)' == ''"
+           Text="BundledAvbSigningKey is required. Pass -p:BundledAvbSigningKey=&lt;path-to-avb-test-key.pem&gt; with the AOSP AVB public test RSA4096 PEM located outside the source tree." />
+    <Error Condition="'$(BundledAvbSigningKey)' != '' and !Exists('$(BundledAvbSigningKey)')"
+           Text="BundledAvbSigningKey does not exist: $(BundledAvbSigningKey)" />
+  </Target>
+
+</Project>

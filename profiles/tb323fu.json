@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "model": "TB323FU",
+  "codename": "baldur",
+  "platform": "SM8850",
+  "maintenanceValidated": false,
+  "androidMinimumGiB": null,
+  "compatibleCandidates": [
+    {
+      "model": "TB323FU",
+      "codename": "baldur",
+      "platform": "SM8850"
+    }
+  ],
+  "notes": "Only the model identifier and the compatible candidate from this ticket are recorded. No firmware is declared ready, no accepted partition capacity is claimed, and maintenance state is unverified."
+}

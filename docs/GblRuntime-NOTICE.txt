@@ -1,0 +1,33 @@
+GBL runtime offline assets - third-party notice
+===============================================
+
+This installer embeds two unmodified public EFI assets from the GBL project.
+
+Upstream project : https://github.com/miner7222/gbl_root_baldur
+Fixed release    : 6.2.192-mod2
+Fixed commit     : ff2a5e2cf71541a23141a9b4d8cd8e8ebe34f340
+Upstream origin  : superturtlee/gbl_root_canoe
+
+Embedded files (standard variants only, byte for byte unmodified):
+
+  generic_superfastboot_prc.efi   282624 bytes
+    SHA-256 B91DB7974DA80976BC73ADD671F4ADFB833AEA4FD0D9D7604B75CB63415FED84
+
+  generic_superfastboot_row.efi   282624 bytes
+    SHA-256 E21F6D5FFE29113943092AC4A2A75E4FA03960831CC8855316C784B472999ABD
+
+These two assets are redistributed unmodified as local offline runtime resources of the
+installer. They are never downloaded at build time or at run time.
+
+Licensing
+---------
+
+The upstream project provides its license text under the GNU General Public License,
+version 3. The complete upstream license text is reproduced verbatim in
+GblRuntime-LICENSE.txt and ships as the embedded resource
+FreedomInstaller.Licenses.Gbl.GPL3.txt. No other license identifier is asserted here;
+only the license text shipped by the upstream project is relied upon.
+
+Pinned sources for the assets and the license:
+
+  https://github.com/miner7222/gbl_root_baldur/tree/ff2a5e2cf71541a23141a9b4d8cd8e8ebe34f340

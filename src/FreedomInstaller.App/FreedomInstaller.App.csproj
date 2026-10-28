@@ -1,0 +1,169 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+    <RootNamespace>FreedomInstaller.App</RootNamespace>
+    <AssemblyName>FreedomInstaller.App</AssemblyName>
+    <Nullable>enable</Nullable>
+    <Authors>danyi (mydanyi)</Authors>
+    <Company>danyi</Company>
+    <Product>ArmadaOS Freedom 安装助手</Product>
+    <AssemblyTitle>ArmadaOS Freedom 安装助手</AssemblyTitle>
+    <Description>免费软件，谨防被骗。ArmadaOS Freedom 双系统安装助手。</Description>
+    <Copyright>Installer by danyi (mydanyi). Third-party components retain their original licenses.</Copyright>
+    <!-- 安装助手自身版本号（非 ArmadaOS 系统版本）。AssemblyVersion/FileVersion 固定四段；
+         IncludeSourceRevisionInInformationalVersion=false 使 InformationalVersion 保持 0.7.4，不追加 git 提交号。 -->
+    <Version>0.7.4</Version>
+    <InformationalVersion>0.7.4</InformationalVersion>
+    <AssemblyVersion>0.7.4.0</AssemblyVersion>
+    <FileVersion>0.7.4.0</FileVersion>
+    <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
+  </PropertyGroup>
+
+  <!-- Single-file, self-contained publish configuration (win-x64, no trimming, no ReadyToRun). -->
+  <PropertyGroup>
+    <PublishSingleFile>true</PublishSingleFile>
+    <SelfContained>true</SelfContained>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+    <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
+    <DebugType>embedded</DebugType>
+    <PublishTrimmed>false</PublishTrimmed>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Keep the Core PDB out of the publish output as well: embed it instead of shipping a side file. -->
+    <ProjectReference Include="..\FreedomInstaller.Core\FreedomInstaller.Core.csproj"
+                      AdditionalProperties="DebugType=embedded" />
+  </ItemGroup>
+
+  <!-- Localized UI catalogs: fixed logical names, embedded in the main assembly (WithCulture="false"). -->
+  <ItemGroup>
+    <EmbeddedResource Include="Resources\Static.*.json"
+                      LogicalName="FreedomInstaller.Strings.%(Filename).json"
+                      WithCulture="false" />
+    <EmbeddedResource Include="Resources\Dynamic.*.json"
+                      LogicalName="FreedomInstaller.Strings.%(Filename).json"
+                      WithCulture="false" />
+  </ItemGroup>
+
+  <!-- Bundled platform-tools: only embedded when the build supplies an existing archive.
+       The archive must be the official platform-tools-windows.zip; it is never downloaded here. -->
+  <ItemGroup Condition="'$(BundledPlatformToolsArchive)' != '' and Exists('$(BundledPlatformToolsArchive)')">
+    <EmbeddedResource Include="$(BundledPlatformToolsArchive)"
+                      LogicalName="FreedomInstaller.PlatformTools.zip" />
+  </ItemGroup>
+
+  <!-- Bundled G4 EDL archive: embedded under a fixed logical name only when the build supplies an existing file; never downloaded. -->
+  <ItemGroup Condition="'$(BundledEdlArchive)' != '' and Exists('$(BundledEdlArchive)')">
+    <EmbeddedResource Include="$(BundledEdlArchive)"
+                      LogicalName="FreedomInstaller.EdlTools.zip" />
+  </ItemGroup>
+
+  <!-- Bundled G5 EDL archive: separate from G4, embedded under its own fixed logical name; never downloaded or generated. -->
+  <ItemGroup Condition="'$(BundledEdlG5Archive)' != '' and Exists('$(BundledEdlG5Archive)')">
+    <EmbeddedResource Include="$(BundledEdlG5Archive)"
+                      LogicalName="FreedomInstaller.EdlTools.G5.zip" />
+  </ItemGroup>
+
+
+  <!-- Bundled Qualcomm USB driver pack: external build input, embedded byte-for-byte under a fixed logical name; never downloaded or repacked. -->
+  <ItemGroup Condition="'$(BundledQualcommDriverArchive)' != '' and Exists('$(BundledQualcommDriverArchive)')">
+    <EmbeddedResource Include="$(BundledQualcommDriverArchive)"
+                      LogicalName="FreedomInstaller.QualcommUsbDriver.zip"
+                      WithCulture="false" />
+  </ItemGroup>
+
+  <!-- Bundled EDL raw boot helpers: pinned native executables embedded byte-for-byte under fixed logical names; never downloaded or built. -->
+  <ItemGroup Condition="'$(BundledEdlRawPacker)' != '' and Exists('$(BundledEdlRawPacker)')">
+    <EmbeddedResource Include="$(BundledEdlRawPacker)"
+                      LogicalName="FreedomInstaller.EdlRawPacker.exe" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(BundledEdlRawUnpacker)' != '' and Exists('$(BundledEdlRawUnpacker)')">
+    <EmbeddedResource Include="$(BundledEdlRawUnpacker)"
+                      LogicalName="FreedomInstaller.EdlRawUnpacker.exe" />
+  </ItemGroup>
+
+  <!-- SharpCompress (MIT) notice: embedded byte-for-byte inside the single executable. -->
+  <ItemGroup>
+    <EmbeddedResource Include="..\..\docs\SharpCompress-LICENSE.txt"
+                      LogicalName="FreedomInstaller.Licenses.SharpCompress.txt" />
+  </ItemGroup>
+
+  <!-- Upstream licenses for the two EDL raw boot helpers: embedded byte-for-byte; nothing rewritten, retyped or generated. -->
+  <ItemGroup>
+    <EmbeddedResource Include="..\..\docs\Packer-LICENSE.txt"
+                      LogicalName="FreedomInstaller.Licenses.Packer.GPL3.txt" />
+    <EmbeddedResource Include="..\..\docs\Inih-LICENSE.txt"
+                      LogicalName="FreedomInstaller.Licenses.Inih.BSD3.txt" />
+  </ItemGroup>
+
+  <!-- Sponsor QR image embedded as a WPF Resource byte-for-byte; loaded by pack URI, never regenerated. -->
+  <ItemGroup>
+    <Resource Include="Assets\sponsor-zh.png" />
+  </ItemGroup>
+
+  <!-- Publishing a single-file installer without the archives would silently produce a broken EXE:
+       platform-tools are required for device queries, the bundled EDL archive (G4) and the separate
+       G5 EDL archive are both required for the EDL flash path of their respective generations, and the
+       two pinned EDL raw boot helpers are required by the 9008 direct install. Those five are
+       validated here. Nothing is ever downloaded by the build.
+       The externally supplied Qualcomm USB driver pack is validated here as well. -->
+  <Target Name="ValidateBundledPlatformToolsArchive" BeforeTargets="PrepareForPublish;Publish">
+    <Error Condition="'$(PublishSingleFile)' == 'true' and '$(BundledPlatformToolsArchive)' == ''"
+           Code="FRDM1001"
+           Text="BundledPlatformToolsArchive is not set. Set it to the absolute path of the existing official platform-tools-windows.zip before publishing the single-file installer." />
+    <Error Condition="'$(PublishSingleFile)' == 'true' and '$(BundledPlatformToolsArchive)' != '' and !Exists('$(BundledPlatformToolsArchive)')"
+           Code="FRDM1002"
+           Text="BundledPlatformToolsArchive '$(BundledPlatformToolsArchive)' does not exist. Point it at the existing official platform-tools-windows.zip; the toolchain is never downloaded by the build." />
+    <Error Condition="'$(PublishSingleFile)' == 'true' and '$(BundledEdlArchive)' == ''"
+           Code="FRDM1005"
+           Text="BundledEdlArchive is not set. Set it to the absolute path of the existing EDL tool archive before publishing the single-file installer; the build never downloads it." />
+    <Error Condition="'$(PublishSingleFile)' == 'true' and '$(BundledEdlArchive)' != '' and !Exists('$(BundledEdlArchive)')"
+           Code="FRDM1006"
+           Text="BundledEdlArchive '$(BundledEdlArchive)' does not exist. Point it at the existing EDL tool archive; the build never downloads it." />
+    <Error Condition="'$(PublishSingleFile)' == 'true' and '$(BundledEdlG5Archive)' == ''"
+           Code="FRDM1017"
+           Text="BundledEdlG5Archive is not set. Set it to the absolute path of the existing reviewed Y700 Gen5 EDL tool archive before publishing the single-file installer; the build never downloads or generates it." />
+    <Error Condition="'$(PublishSingleFile)' == 'true' and '$(BundledEdlG5Archive)' != '' and !Exists('$(BundledEdlG5Archive)')"
+           Code="FRDM1018"
+           Text="BundledEdlG5Archive '$(BundledEdlG5Archive)' does not exist. Point it at the existing reviewed Y700 Gen5 EDL tool archive; the build never downloads or generates it." />
+    <Error Condition="'$(PublishSingleFile)' == 'true' and '$(BundledEdlRawPacker)' == ''"
+           Code="FRDM1013"
+           Text="BundledEdlRawPacker is not set. Set it to the absolute path of the existing pinned EDL raw packer executable before publishing the single-file installer; the build never downloads it." />
+    <Error Condition="'$(PublishSingleFile)' == 'true' and '$(BundledEdlRawPacker)' != '' and !Exists('$(BundledEdlRawPacker)')"
+           Code="FRDM1014"
+           Text="BundledEdlRawPacker '$(BundledEdlRawPacker)' does not exist. Point it at the existing pinned EDL raw packer executable; the build never downloads it." />
+    <Error Condition="'$(PublishSingleFile)' == 'true' and '$(BundledEdlRawUnpacker)' == ''"
+           Code="FRDM1015"
+           Text="BundledEdlRawUnpacker is not set. Set it to the absolute path of the existing pinned EDL raw unpacker executable before publishing the single-file installer; the build never downloads it." />
+    <Error Condition="'$(PublishSingleFile)' == 'true' and '$(BundledEdlRawUnpacker)' != '' and !Exists('$(BundledEdlRawUnpacker)')"
+           Code="FRDM1016"
+           Text="BundledEdlRawUnpacker '$(BundledEdlRawUnpacker)' does not exist. Point it at the existing pinned EDL raw unpacker executable; the build never downloads it." />
+    <!-- The two standard GBL runtime EFI assets are extra build-only inputs of the single-file
+         installer, not product settings; they are never downloaded or generated. -->
+    <Error Condition="'$(PublishSingleFile)' == 'true' and '$(BundledGblPrcEfi)' == ''"
+           Code="FRDM1019"
+           Text="BundledGblPrcEfi is not set. Set it to the absolute path of the existing pinned standard PRC GBL runtime EFI file before publishing the single-file installer; the build never downloads it." />
+    <Error Condition="'$(PublishSingleFile)' == 'true' and '$(BundledGblPrcEfi)' != '' and !Exists('$(BundledGblPrcEfi)')"
+           Code="FRDM1020"
+           Text="BundledGblPrcEfi '$(BundledGblPrcEfi)' does not exist. Point it at the existing pinned standard PRC GBL runtime EFI file; the build never downloads it." />
+    <Error Condition="'$(PublishSingleFile)' == 'true' and '$(BundledGblRowEfi)' == ''"
+           Code="FRDM1021"
+           Text="BundledGblRowEfi is not set. Set it to the absolute path of the existing pinned standard ROW GBL runtime EFI file before publishing the single-file installer; the build never downloads it." />
+    <Error Condition="'$(PublishSingleFile)' == 'true' and '$(BundledGblRowEfi)' != '' and !Exists('$(BundledGblRowEfi)')"
+           Code="FRDM1022"
+           Text="BundledGblRowEfi '$(BundledGblRowEfi)' does not exist. Point it at the existing pinned standard ROW GBL runtime EFI file; the build never downloads it." />
+    <Error Condition="'$(PublishSingleFile)' == 'true' and '$(BundledQualcommDriverArchive)' == ''"
+           Code="FRDM1023"
+           Text="BundledQualcommDriverArchive is not set. Set it to the absolute path of the existing Qualcomm USB driver pack archive before publishing the single-file installer; the build never downloads or generates it." />
+    <Error Condition="'$(PublishSingleFile)' == 'true' and '$(BundledQualcommDriverArchive)' != '' and !Exists('$(BundledQualcommDriverArchive)')"
+           Code="FRDM1024"
+           Text="BundledQualcommDriverArchive '$(BundledQualcommDriverArchive)' does not exist. Point it at the existing Qualcomm USB driver pack archive; the build never downloads or generates it." />
+  </Target>
+
+</Project>
