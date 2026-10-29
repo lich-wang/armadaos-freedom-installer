@@ -172,6 +172,67 @@ public sealed class PackageImporterTests
     }
 
     [Fact]
+    public async Task Import_SkipsBundleEntriesForModelsThisInstallerDoesNotKnow()
+    {
+        using var fixture = new ImportFixture();
+        var bundle = new BundleBuilder(fixture.StagingRoot);
+        bundle.AddPackage("TB999ZZ");
+        bundle.AddPackage(ModelA);
+        var zip = bundle.Write(
+            fixture.BundlePath(),
+            BundleJson(("TB999ZZ", "models/TB999ZZ"), (ModelA, "models/" + ModelA)));
+
+        using var imported = await PackageImporter.ImportAsync(
+            zip, ModelA, InstallationTarget.Internal, fixture.WorkRoot);
+
+        Assert.True(imported.Validation.IsValid, Join(imported.Validation.Reasons));
+        Assert.Equal(ModelA, imported.DeviceModel);
+        var expectedFingerprint = Convert.ToHexString(SHA256.HashData(bundle.Manifests[ModelA]));
+        Assert.Equal(expectedFingerprint, imported.Validation.ManifestFingerprint);
+        var manifestPath = Assert.Single(Directory.GetFiles(
+            fixture.WorkRoot, "package.json", SearchOption.AllDirectories));
+        Assert.Equal(bundle.Manifests[ModelA], File.ReadAllBytes(manifestPath));
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    public async Task Import_RejectsABundleEntryWithAnEmptyModel(string model)
+    {
+        using var fixture = new ImportFixture();
+        var bundle = new BundleBuilder(fixture.StagingRoot);
+        bundle.AddPackage(ModelA);
+        var zip = bundle.Write(
+            fixture.BundlePath(),
+            BundleJson((ModelA, "models/" + ModelA), (model, "models/empty")));
+
+        using var imported = await PackageImporter.ImportAsync(
+            zip, ModelA, InstallationTarget.Internal, fixture.WorkRoot);
+
+        Assert.False(imported.Validation.IsValid);
+        Assert.Contains(imported.Validation.Reasons, reason => reason.Contains("deviceModel 为空", StringComparison.Ordinal));
+        AssertNoOutput(fixture);
+    }
+
+    [Fact]
+    public async Task Import_RejectsABundleEntryWhoseModelDiffersOnlyInCase()
+    {
+        using var fixture = new ImportFixture();
+        var bundle = new BundleBuilder(fixture.StagingRoot);
+        bundle.AddPackage(ModelA);
+        var zip = bundle.Write(
+            fixture.BundlePath(),
+            BundleJson((ModelA.ToLowerInvariant(), "models/" + ModelA)));
+
+        using var imported = await PackageImporter.ImportAsync(
+            zip, ModelA, InstallationTarget.Internal, fixture.WorkRoot);
+
+        Assert.False(imported.Validation.IsValid);
+        Assert.Contains(imported.Validation.Reasons, reason => reason.Contains("只差大小写", StringComparison.Ordinal));
+        AssertNoOutput(fixture);
+    }
+
+    [Fact]
     public async Task Import_RejectsDuplicateModelDeclarationsInOneBundle()
     {
         using var fixture = new ImportFixture();
