@@ -23,6 +23,7 @@ public sealed class PackageContractTests
 {
     private const string ModelA = "TB322FC";
     private const string ModelB = "TB323FU";
+    private const string ModelTb710fu = "TB710FU";
 
     private static readonly JsonSerializerOptions WriteOptions = new() { WriteIndented = true };
 
@@ -160,6 +161,41 @@ public sealed class PackageContractTests
         AssertRejected(
             ValidateMutated(ModelB, metadata => metadata["compatible"]!.AsObject()["soc"] = "SM8750"),
             "compatible.soc");
+    }
+
+    [Fact]
+    public void Validate_Tb710fuPackageIsAcceptedWithItsOwnCompatiblePairOnly()
+    {
+        using (var fixture = new TempPackageDirectory())
+        {
+            PackageFixture.WritePackage(fixture.Path, ModelTb710fu);
+            var result = PackageReader.Validate(fixture.Path, ModelTb710fu);
+            Assert.True(result.IsValid, string.Join("; ", result.Reasons));
+        }
+
+        AssertRejected(
+            ValidateMutated(ModelTb710fu, metadata => metadata["compatible"]!.AsObject()["soc"] = "SM8750"),
+            "compatible.soc");
+        AssertRejected(
+            ValidateMutated(ModelTb710fu, metadata => metadata["compatible"]!.AsObject()["device"] = "elden"),
+            "compatible.device");
+    }
+
+    [Fact]
+    public void Validate_Tb710fuPackageIsRejectedForTheOtherModelsAndViceVersa()
+    {
+        using (var fixture = new TempPackageDirectory())
+        {
+            PackageFixture.WritePackage(fixture.Path, ModelTb710fu);
+            AssertRejected(PackageReader.Validate(fixture.Path, ModelA), "deviceModel");
+            AssertRejected(PackageReader.Validate(fixture.Path, ModelB), "deviceModel");
+        }
+
+        using (var fixture = new TempPackageDirectory())
+        {
+            PackageFixture.WritePackage(fixture.Path, ModelA);
+            AssertRejected(PackageReader.Validate(fixture.Path, ModelTb710fu), "deviceModel");
+        }
     }
 
     [Fact]

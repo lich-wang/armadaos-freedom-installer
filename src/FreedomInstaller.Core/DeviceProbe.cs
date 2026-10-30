@@ -8,8 +8,11 @@ public static class DeviceProbe
 {
     private const string FastbootPrefix = "(bootloader)";
 
-    /// <summary>The only models this installer accepts. Anything else is not a supported generation.</summary>
-    private static readonly string[] SupportedModels = { "TB322FC", "TB323FU" };
+    /// <summary>
+    /// The only models this installer identifies. Anything else is not a supported generation. TB710FU is
+    /// identified so its read-only checks can run; its write routes stay closed in <see cref="DeviceModelRoutes"/>.
+    /// </summary>
+    private static readonly string[] SupportedModels = { "TB322FC", "TB323FU", "TB710FU" };
 
     /// <summary>getprop keys that are allowed to name the device model.</summary>
     private static readonly string[] ModelPropertyKeys =
@@ -169,7 +172,7 @@ public static class DeviceProbe
     }
 
     /// <summary>
-    /// Returns the canonical model of the ticket, "TB322FC" or "TB323FU", or null when the output
+    /// Returns the canonical model of the ticket, "TB322FC", "TB323FU" or "TB710FU", or null when the output
     /// names no supported model. An optional "Lenovo " prefix and a "_PRC" suffix are normalised away.
     /// Only whole tokens match: "TB324ZC" and "NOTTB322FC" are rejected. Two different supported
     /// models in the same getprop dump are a contradiction and also yield null.
@@ -223,7 +226,7 @@ public static class DeviceProbe
     internal static bool IsSupportedModel(string? model) => CanonicalModel(model) is not null;
 
     /// <summary>
-    /// The canonical model name ("TB322FC" or "TB323FU") after the same normalisation
+    /// The canonical model name ("TB322FC", "TB323FU" or "TB710FU") after the same normalisation
     /// <see cref="IdentifyModel"/> applies, or null when the value names no supported model. Shared with
     /// <see cref="BootRouteAssessment"/> so a route never decides on a differently normalised model string
     /// than the gate does.

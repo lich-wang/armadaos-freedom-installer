@@ -20,6 +20,7 @@ public sealed class GlobalEdlDetectionTests : IDisposable
 {
     private const string G4HardwareId = "0028D0E100400000";
     private const string G5HardwareId = "002B40E100400000";
+    private const string Tb710fuHardwareId = "003050E100400000";
     private const string UnknownHardwareId = "0028D0E10040000B";
 
     private static readonly TimeSpan IdentifyTimeout = TimeSpan.FromSeconds(30);
@@ -104,6 +105,22 @@ public sealed class GlobalEdlDetectionTests : IDisposable
         Assert.Equal(2, discovery.ReadCount);
 
         // The G5 profile still must not drag its loader into a detection command.
+        Assert.DoesNotContain("--loader", runner.Commands[0].Arguments);
+    }
+
+    [Fact]
+    public async Task Detect_Tb710fu_full_hardware_id_selects_the_builtin_tb710fu_profile()
+    {
+        E003ScriptedEndpointDiscovery discovery = Discovery(E003EdlTestData.Endpoint());
+        E003FakeCommandRunner runner = new E003FakeCommandRunner();
+        runner.Enqueue(IdentityLine(hwid: Tb710fuHardwareId));
+
+        EdlDeviceProfile profile = await GlobalEdlDetection.DetectAsync(_clientPath, runner, discovery);
+
+        // Detection needs no TB710FU archive: only the identify command of the shared client runs.
+        Assert.Same(EdlDeviceProfiles.FindByModel("TB710FU"), profile);
+        Assert.Equal("tb710fu-9008-495", profile.ProfileId);
+        Assert.Equal(1, runner.CallCount);
         Assert.DoesNotContain("--loader", runner.Commands[0].Arguments);
     }
 

@@ -606,6 +606,43 @@ public sealed class EdlEntryTests
     }
 
     [Fact]
+    public async Task EnterAsync_explicit_tb710fu_profile_enters_with_single_reboot()
+    {
+        // Entering 9008 is shared with the read-only global backup; it is not a write route.
+        var profile = RequireProfile("tb710fu-9008-495");
+
+        var endpoint = Endpoint();
+        var runner = EdlFakeCommandRunner.Succeeding();
+        var discovery = new EdlFakeEndpointDiscovery(new[] { new[] { endpoint } });
+        var entry = CreateEntry(runner, discovery);
+        var android = CreateAndroid(model: "TB710FU", displayId: "TB710FU_SYNTHETIC_ACTUAL_FIRMWARE");
+
+        var result = await entry.EnterAsync(android, profile);
+
+        var command = Assert.Single(runner.Commands);
+        Assert.Equal(new[] { "-s", Serial, "reboot", "edl" }, command.Arguments);
+        Assert.Same(android, result.AndroidIdentity);
+        Assert.Equal(BusSnHex, result.BusSerialHex);
+    }
+
+    [Theory]
+    [InlineData("TB322FC")]
+    [InlineData("TB323FU")]
+    public async Task EnterAsync_explicit_tb710fu_profile_refuses_another_model_before_io(string model)
+    {
+        var runner = EdlFakeCommandRunner.Succeeding();
+        var discovery = new EdlFakeEndpointDiscovery(new[] { new[] { Endpoint() } });
+        var entry = CreateEntry(runner, discovery);
+        var android = CreateAndroid(model: model, displayId: MaintenanceProfiles.AndroidBuild);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(
+            () => entry.EnterAsync(android, RequireProfile("tb710fu-9008-495")));
+
+        Assert.Empty(runner.Commands);
+        Assert.Equal(0, discovery.Calls);
+    }
+
+    [Fact]
     public async Task EnterAsync_null_profile_is_rejected_before_runner_or_discovery()
     {
         var runner = EdlFakeCommandRunner.Succeeding();
@@ -755,6 +792,6 @@ public sealed class EdlEntryTests
         Assert.Equal("g4-9008-259", defaultProfile.ProfileId);
         Assert.Equal("0028D0E100400000", defaultProfile.FullHardwareId);
         Assert.Equal("FreedomInstaller.EdlTools.zip", defaultProfile.ArchiveLogicalName);
-        Assert.Equal(new[] { "TB322FC", "TB323FU" }, EdlDeviceProfiles.Models);
+        Assert.Equal(new[] { "TB322FC", "TB323FU", "TB710FU" }, EdlDeviceProfiles.Models);
     }
 }

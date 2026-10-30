@@ -11,8 +11,9 @@ namespace FreedomInstaller.Core;
 /// <para>
 /// There is exactly one authoritative ordered six-LUN role table here. <c>TB322FC</c> keeps all 39 partition
 /// labels (51 files); <c>TB323FU</c> drops only <c>proinfo</c>, <c>lenovolock</c>, <c>lenovocust</c> and
-/// <c>lenovoraw</c> - all of them on LUN0 - and therefore carries 35 labels and 47 files. No firmware gate, no
-/// profile id, no external dependency and no future-model fallback is involved.
+/// <c>lenovoraw</c> - all of them on LUN0 - and therefore carries 35 labels and 47 files; <c>TB710FU</c> drops only
+/// <c>lenovocust</c> and <c>lenovoraw</c> (absent from its measured LUN0 GPT) and carries 37 labels and 49 files.
+/// No firmware gate, no profile id, no external dependency and no future-model fallback is involved.
 /// </para>
 /// <para>
 /// The baseline model contract never carries the optional <c>efisp</c> role. A snapshot produced by
@@ -31,6 +32,7 @@ internal sealed class InternalInstallBackupRoles
 {
     private const string ModelG4 = "TB322FC";
     private const string ModelG5 = "TB323FU";
+    private const string ModelTb710fu = "TB710FU";
 
     private const int LunCount = 6;
 
@@ -74,6 +76,12 @@ internal sealed class InternalInstallBackupRoles
     private static readonly string[] G5ExcludedPartitions =
     {
         "proinfo", "lenovolock", "lenovocust", "lenovoraw",
+    };
+
+    /// <summary>Labels of the TB322FC table that TB710FU does not carry; both live on LUN0.</summary>
+    private static readonly string[] Tb710fuExcludedPartitions =
+    {
+        "lenovocust", "lenovoraw",
     };
 
     private readonly ReadOnlyCollection<(int Lun, string Name)> _partitions;
@@ -135,14 +143,26 @@ internal sealed class InternalInstallBackupRoles
             throw new ArgumentException("A model name is required.", nameof(model));
         }
 
-        bool isG5 = string.Equals(model, ModelG5, StringComparison.Ordinal);
-        if (!isG5 && !string.Equals(model, ModelG4, StringComparison.Ordinal))
+        string[] excluded;
+        if (string.Equals(model, ModelG4, StringComparison.Ordinal))
+        {
+            excluded = Array.Empty<string>();
+        }
+        else if (string.Equals(model, ModelG5, StringComparison.Ordinal))
+        {
+            excluded = G5ExcludedPartitions;
+        }
+        else if (string.Equals(model, ModelTb710fu, StringComparison.Ordinal))
+        {
+            excluded = Tb710fuExcludedPartitions;
+        }
+        else
         {
             throw new ArgumentException(
                 "The model '" + model + "' has no internal backup role contract.", nameof(model));
         }
 
-        (int Lun, string Name)[] partitions = BuildPartitions(isG5);
+        (int Lun, string Name)[] partitions = BuildPartitions(excluded);
         return Create(partitions, false, false);
     }
 
@@ -381,7 +401,7 @@ internal sealed class InternalInstallBackupRoles
             hasLegacyMetadata);
     }
 
-    private static (int Lun, string Name)[] BuildPartitions(bool dropG5Excluded)
+    private static (int Lun, string Name)[] BuildPartitions(string[] excludedPartitions)
     {
         List<(int Lun, string Name)> partitions = new();
 
@@ -389,7 +409,7 @@ internal sealed class InternalInstallBackupRoles
         {
             foreach (string name in OrderedLunRoles[lun])
             {
-                if (dropG5Excluded && IsExcludedOnG5(name))
+                if (IsExcluded(excludedPartitions, name))
                 {
                     continue;
                 }
@@ -401,9 +421,9 @@ internal sealed class InternalInstallBackupRoles
         return partitions.ToArray();
     }
 
-    private static bool IsExcludedOnG5(string name)
+    private static bool IsExcluded(string[] excludedPartitions, string name)
     {
-        foreach (string excluded in G5ExcludedPartitions)
+        foreach (string excluded in excludedPartitions)
         {
             if (string.Equals(excluded, name, StringComparison.OrdinalIgnoreCase))
             {

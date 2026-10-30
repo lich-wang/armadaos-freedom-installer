@@ -96,6 +96,29 @@ public sealed class PackageImporterTests
         Assert.True(File.Exists(Path.Combine(source, PackageFixture.LinuxRootFileName)));
     }
 
+    [Theory]
+    [InlineData(ModelA)]
+    [InlineData("TB710FU")]
+    public async Task Import_BundleWithTb710fuSelectsEachModel(string model)
+    {
+        using var fixture = new ImportFixture();
+        var bundle = new BundleBuilder(fixture.StagingRoot);
+        bundle.AddPackage(ModelA);
+        bundle.AddPackage("TB710FU");
+        var zip = bundle.Write(
+            fixture.BundlePath(),
+            BundleJson((ModelA, "models/" + ModelA), ("TB710FU", "models/TB710FU")));
+
+        using var imported = await PackageImporter.ImportAsync(
+            zip, model, InstallationTarget.Internal, fixture.WorkRoot);
+
+        Assert.Equal(model, imported.DeviceModel);
+        Assert.True(imported.Validation.IsValid, Join(imported.Validation.Reasons));
+        Assert.Equal(
+            Convert.ToHexString(SHA256.HashData(bundle.Manifests[model])),
+            imported.Validation.ManifestFingerprint);
+    }
+
     // ------------------------------------------------------------------------ extraction and dispose
 
     [Fact]

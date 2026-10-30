@@ -27,6 +27,9 @@ namespace FreedomInstaller.Core.Tests
         private const int G4FileCount = 51;
         private const int G5PartitionCount = 35;
         private const int G5FileCount = 47;
+        private const string Tb710fuModel = "TB710FU";
+        private const int Tb710fuPartitionCount = 37;
+        private const int Tb710fuFileCount = 49;
 
         private const int GptRoleCount = 12;
         private const int LunCount = 6;
@@ -155,6 +158,52 @@ namespace FreedomInstaller.Core.Tests
             }
         }
 
+        [Fact]
+        public void ForModel_Tb710fu_DropsOnlyLenovocustAndLenovoraw()
+        {
+            object g4 = CreateRoles(G4Model);
+            IReadOnlyList<(int Lun, string Name)> g4Partitions =
+                GetProperty<IReadOnlyList<(int Lun, string Name)>>(g4, "Partitions");
+
+            object tb710fu = CreateRoles(Tb710fuModel);
+            IReadOnlyList<(int Lun, string Name)> partitions =
+                GetProperty<IReadOnlyList<(int Lun, string Name)>>(tb710fu, "Partitions");
+            IReadOnlyList<string> partitionNames =
+                GetProperty<IReadOnlyList<string>>(tb710fu, "PartitionNames");
+            IReadOnlyList<string> requiredRoles =
+                GetProperty<IReadOnlyList<string>>(tb710fu, "RequiredRoles");
+            IReadOnlyDictionary<string, int> roleLuns =
+                GetProperty<IReadOnlyDictionary<string, int>>(tb710fu, "RoleLuns");
+
+            Assert.Equal(Tb710fuPartitionCount, partitions.Count);
+            Assert.Equal(Tb710fuFileCount, GetInt32(tb710fu, "TotalFileCount"));
+            Assert.Equal(Tb710fuFileCount, requiredRoles.Count);
+
+            // The G4 sequence and LUN map minus exactly lenovocust / lenovoraw; proinfo and lenovolock stay,
+            // because the measured TB710FU LUN0 GPT carries them.
+            List<(int Lun, string Name)> expected = g4Partitions
+                .Where(p => p.Name != "lenovocust" && p.Name != "lenovoraw")
+                .ToList();
+            Assert.Equal(expected, partitions.ToList());
+            Assert.True(Contains(partitionNames, "proinfo"));
+            Assert.True(Contains(partitionNames, "lenovolock"));
+            Assert.False(Contains(partitionNames, "lenovocust"));
+            Assert.False(Contains(partitionNames, "lenovoraw"));
+
+            Assert.Equal(partitionNames.ToList(), requiredRoles.Skip(GptRoleCount).ToList());
+            AssertGptRoleBlock(requiredRoles, roleLuns);
+            AssertKeysMatchRoles(requiredRoles, roleLuns);
+            AssertRoleLunsMatchPartitions(partitions, roleLuns);
+        }
+
+        [Fact]
+        public void ForModel_G4_and_G5_are_unchanged_next_to_Tb710fu()
+        {
+            Assert.Equal(G4FileCount, GetInt32(CreateRoles(G4Model), "TotalFileCount"));
+            Assert.Equal(G5FileCount, GetInt32(CreateRoles(G5Model), "TotalFileCount"));
+            Assert.Equal(Tb710fuFileCount, GetInt32(CreateRoles(Tb710fuModel), "TotalFileCount"));
+        }
+
         [Theory]
         [InlineData(null)]
         [InlineData("")]
@@ -163,6 +212,8 @@ namespace FreedomInstaller.Core.Tests
         [InlineData("\t")]
         [InlineData("TB999")]
         [InlineData(" TB322FC ")]
+        [InlineData("tb710fu")]
+        [InlineData(" TB710FU ")]
         public void ForModel_UnknownOrBlankModel_ThrowsArgumentException(string? model)
         {
             Exception? failure = CaptureFailure(model);

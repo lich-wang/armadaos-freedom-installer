@@ -487,6 +487,139 @@ namespace FreedomInstaller.Core.Tests
             AssertNoStagingResidue(workRoot, 0);
         }
 
+        // ---------------------------------------------------------------- TB710FU cross-profile (archive-free)
+
+        private const string Tb710fuProfileId = "tb710fu-9008-495";
+        private const string Tb710fuModel = "TB710FU";
+        private const string Tb710fuProvenance = "TB710FU/ZUXOS_1.5.04.495_WITHOUT_UBL/EDL/xbl_s_devprg_ns.melf";
+        private const string Tb710fuHardwareId = "003050E100400000";
+        private const string Tb710fuFirehoseRelPath = "tools/tb710fu/firehose.melf";
+
+        [Fact]
+        public async Task LoadAsync_rejects_forged_tb710fu_identity_with_g4_build_and_hardware_id()
+        {
+            using var root = new TestRoot();
+            var workRoot = root.CreateWorkRoot();
+            var fixture = Fixture.Default();
+
+            // The trusted TB710FU profile is selected, but the loader source build and hardware id are G4's.
+            fixture.ProfileId = Tb710fuProfileId;
+            fixture.Model = Tb710fuModel;
+            fixture.AndroidBuild = ExpectedAndroidBuild;
+            fixture.HardwareId = ExpectedHardwareId;
+            using var zip = fixture.BuildZip();
+
+            var ex = await Assert.ThrowsAsync<InvalidDataException>(() => EdlToolchain.LoadAsync(zip, workRoot));
+            Assert.Contains("androidBuild", ex.Message, StringComparison.OrdinalIgnoreCase);
+            AssertNoStagingResidue(workRoot, 0);
+        }
+
+        [Fact]
+        public async Task LoadAsync_rejects_tb710fu_identity_with_g4_hardware_id()
+        {
+            using var root = new TestRoot();
+            var workRoot = root.CreateWorkRoot();
+            var fixture = Fixture.Default();
+            fixture.ProfileId = Tb710fuProfileId;
+            fixture.Model = Tb710fuModel;
+            fixture.AndroidBuild = Tb710fuProvenance;
+            fixture.HardwareId = ExpectedHardwareId;
+            using var zip = fixture.BuildZip();
+
+            var ex = await Assert.ThrowsAsync<InvalidDataException>(() => EdlToolchain.LoadAsync(zip, workRoot));
+            Assert.Contains("hardwareId", ex.Message, StringComparison.OrdinalIgnoreCase);
+            AssertNoStagingResidue(workRoot, 0);
+        }
+
+        [Fact]
+        public async Task LoadAsync_rejects_g4_profile_carrying_the_tb710fu_hardware_id()
+        {
+            using var root = new TestRoot();
+            var workRoot = root.CreateWorkRoot();
+            var fixture = Fixture.Default();
+            fixture.HardwareId = Tb710fuHardwareId;
+            using var zip = fixture.BuildZip();
+
+            var ex = await Assert.ThrowsAsync<InvalidDataException>(() => EdlToolchain.LoadAsync(zip, workRoot));
+            Assert.Contains("hardwareId", ex.Message, StringComparison.OrdinalIgnoreCase);
+            AssertNoStagingResidue(workRoot, 0);
+        }
+
+        [Fact]
+        public async Task LoadAsync_rejects_tb710fu_identity_with_the_g4_loader_path()
+        {
+            using var root = new TestRoot();
+            var workRoot = root.CreateWorkRoot();
+            var fixture = Fixture.Default();
+
+            // A complete TB710FU identity cannot reuse the G4 loader location.
+            fixture.ProfileId = Tb710fuProfileId;
+            fixture.Model = Tb710fuModel;
+            fixture.AndroidBuild = Tb710fuProvenance;
+            fixture.HardwareId = Tb710fuHardwareId;
+            using var zip = fixture.BuildZip();
+
+            var ex = await Assert.ThrowsAsync<InvalidDataException>(() => EdlToolchain.LoadAsync(zip, workRoot));
+            Assert.Contains(Tb710fuFirehoseRelPath, ex.Message, StringComparison.Ordinal);
+            AssertNoStagingResidue(workRoot, 0);
+        }
+
+        [Fact]
+        public async Task LoadAsync_rejects_tb710fu_identity_with_the_g4_loader_pin()
+        {
+            using var root = new TestRoot();
+            var workRoot = root.CreateWorkRoot();
+            var fixture = Fixture.Default();
+
+            // Right TB710FU identity and loader path, but the declared loader pin is the G4 one.
+            fixture.ProfileId = Tb710fuProfileId;
+            fixture.Model = Tb710fuModel;
+            fixture.AndroidBuild = Tb710fuProvenance;
+            fixture.HardwareId = Tb710fuHardwareId;
+            fixture.RenameRole(FirehoseRole, Tb710fuFirehoseRelPath);
+            using var zip = fixture.BuildZip();
+
+            var ex = await Assert.ThrowsAsync<InvalidDataException>(() => EdlToolchain.LoadAsync(zip, workRoot));
+            Assert.Contains("pin for role 'firehose'", ex.Message, StringComparison.Ordinal);
+            AssertNoStagingResidue(workRoot, 0);
+        }
+
+        [Theory]
+        [InlineData("model", "tb710fu")]
+        [InlineData("model", "TB710F")]
+        [InlineData("model", Tb710fuModel + " ")]
+        [InlineData("model", "TB322FC")]
+        [InlineData("androidBuild", Tb710fuProvenance + "_EXTRA")]
+        [InlineData("androidBuild", "")]
+        public async Task LoadAsync_rejects_non_exact_tb710fu_identity(string field, string value)
+        {
+            using var root = new TestRoot();
+            var workRoot = root.CreateWorkRoot();
+            var fixture = Fixture.Default();
+            fixture.ProfileId = Tb710fuProfileId;
+            fixture.Model = Tb710fuModel;
+            fixture.AndroidBuild = Tb710fuProvenance;
+            fixture.HardwareId = Tb710fuHardwareId;
+            fixture.RenameRole(FirehoseRole, Tb710fuFirehoseRelPath);
+
+            switch (field)
+            {
+                case "model":
+                    fixture.Model = value;
+                    break;
+                case "androidBuild":
+                    fixture.AndroidBuild = value;
+                    break;
+                default:
+                    throw new InvalidOperationException("Unknown field: " + field);
+            }
+
+            using var zip = fixture.BuildZip();
+            var ex = await Assert.ThrowsAsync<InvalidDataException>(() => EdlToolchain.LoadAsync(zip, workRoot));
+            Assert.Contains(field, ex.Message, StringComparison.OrdinalIgnoreCase);
+            AssertNoStagingResidue(workRoot, 0);
+        }
+
         [Theory]
         [InlineData("model", "tb322fc")]
         [InlineData("model", "TB322F")]

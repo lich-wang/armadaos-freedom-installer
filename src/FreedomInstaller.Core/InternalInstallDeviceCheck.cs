@@ -191,6 +191,8 @@ public sealed class InternalInstallDeviceCheck
     private const string G4Model = "TB322FC";
     private const string G5Model = "TB323FU";
     private const string G4Product = "elden_prc_wifi";
+    private const string Tb710fuModel = DeviceModelRoutes.Tb710fuModel;
+    private const string Tb710fuProduct = "topaz_prc_wifi";
 
     private static readonly Regex SerialPattern = new("^[A-Za-z0-9-]{1,64}$", RegexOptions.CultureInvariant);
     private static readonly TimeSpan RebootTimeout = TimeSpan.FromSeconds(10);
@@ -1018,12 +1020,22 @@ public sealed class InternalInstallDeviceCheck
         }
     }
 
-    /// <summary>G4 accepts only its own product aliases; G5 accepts any non-G4 product.</summary>
+    /// <summary>
+    /// G4 accepts only its own product aliases; G5 accepts any non-G4 product; TB710FU accepts only its own
+    /// product aliases (<c>topaz_prc_wifi</c> or the model name itself).
+    /// </summary>
     private static bool IsAcceptedProduct(string model, string product)
     {
         if (string.IsNullOrWhiteSpace(product))
         {
             return false;
+        }
+
+        // TB710FU is decided on its own aliases before the G4/G5 expression below, which stays unchanged.
+        if (string.Equals(model, Tb710fuModel, StringComparison.Ordinal))
+        {
+            return string.Equals(product, Tb710fuModel, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(product, Tb710fuProduct, StringComparison.OrdinalIgnoreCase);
         }
 
         var isG4Product = string.Equals(product, G4Model, StringComparison.OrdinalIgnoreCase)

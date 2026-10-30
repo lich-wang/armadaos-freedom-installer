@@ -52,7 +52,12 @@ public static class InstallationReadiness
 
             if (!DeviceProbe.IsSupportedModel(identity.Model))
             {
-                reasons.Add($"设备型号 {Describe(identity.Model)} 不在支持列表（TB322FC / TB323FU）内。");
+                reasons.Add($"设备型号 {Describe(identity.Model)} 不在支持列表（TB322FC / TB323FU / TB710FU）内。");
+            }
+            else if (DeviceModelRoutes.IsWriteRoutePending(DeviceProbe.CanonicalModel(identity.Model)))
+            {
+                // Identified for read-only work only: no lock state or other input can open this gate.
+                reasons.Add($"设备型号 {Describe(identity.Model)} 目前只开放识别与只读检查，安装写入路线尚未开放。");
             }
 
             switch (identity.BootloaderState)

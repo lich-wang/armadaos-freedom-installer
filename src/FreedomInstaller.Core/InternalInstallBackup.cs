@@ -108,6 +108,10 @@ public static partial class InternalInstallBackup
             client.Toolchain.HardwareId);
         RequireProfile(profile);
 
+        // The install backup belongs to the install route: a model whose install route is not open is refused
+        // before any directory or device command exists.
+        DeviceModelRoutes.RequireWriteRoute(profile.Model);
+
         // The contract originates from the loaded toolchain's model, never from a caller-supplied value.
         InternalInstallBackupRoles roles = InternalInstallBackupRoles.ForModel(profile.Model);
 

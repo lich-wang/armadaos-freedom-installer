@@ -57,6 +57,7 @@ public static partial class GlobalEdlBackup
 
     private const string ModelG4 = "TB322FC";
     private const string ModelG5 = "TB323FU";
+    private const string ModelTb710fu = "TB710FU";
 
     /// <summary>
     /// The one serializer configuration of the manifest: camelCase, indented, no comments or trailing commas, and
@@ -317,9 +318,11 @@ public static partial class GlobalEdlBackup
             }
         }
 
+        // TB710FU is accepted for this read-only capture; its global restore stays closed (DeviceModelRoutes).
         if (string.IsNullOrWhiteSpace(model) ||
             (!string.Equals(model, ModelG4, StringComparison.Ordinal) &&
-             !string.Equals(model, ModelG5, StringComparison.Ordinal)))
+             !string.Equals(model, ModelG5, StringComparison.Ordinal) &&
+             !string.Equals(model, ModelTb710fu, StringComparison.Ordinal)))
         {
             throw new InvalidDataException(
                 $"The model '{model}' has no initial-install partition contract.");

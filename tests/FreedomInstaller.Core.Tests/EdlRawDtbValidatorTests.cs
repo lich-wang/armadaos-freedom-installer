@@ -28,6 +28,11 @@ public sealed class EdlRawDtbValidatorTests
     private static readonly string[] G4Compatible = { "lenovo,elden", "qcom,sm8750" };
     private static readonly string[] G5Compatible = { "lenovo,baldur", "qcom,kaanapali" };
 
+    private const string Tb710fuModel = "TB710FU";
+    private const string Tb710fuNormalArgs = "console=ttyMSM0,115200n8 androidboot.hardware=qcom";
+    private const string Tb710fuDiagnosticArgs = "console=ttyMSM0,115200n8 armada.diag=1";
+    private static readonly string[] Tb710fuCompatible = { "lenovo,tb710fu", "qcom,sm8650" };
+
     [Fact]
     public void G4NormalProducesFactsForBootBuilderProtocolOne()
     {
@@ -351,6 +356,106 @@ public sealed class EdlRawDtbValidatorTests
             default:
                 throw new ArgumentOutOfRangeException(nameof(rejection), rejection, "Unhandled TF rejection case.");
         }
+    }
+
+    // ---------------------------------------------------------------- TB710FU
+
+    [Theory]
+    [InlineData("os", "internal")]
+    [InlineData("maintenance", "internal")]
+    [InlineData("os", "tf")]
+    [InlineData("maintenance", "tf")]
+    public void Tb710fuCanonicalPairIsAcceptedForBothKindsAndMedia(string stage, string medium)
+    {
+        string args = stage == "os" ? Tb710fuNormalArgs : Tb710fuDiagnosticArgs;
+        EdlRawDtbKind kind = stage == "os" ? EdlRawDtbKind.Normal : EdlRawDtbKind.Diagnostic;
+        byte[] blob = CreateBootTree(
+            EncodeStringList(Tb710fuCompatible),
+            EncodeString(args),
+            stage,
+            medium,
+            EncodeBigEndianCells(5)).Build();
+
+        EdlRawDtbEvidence evidence = medium == "tf"
+            ? EdlRawDtbValidator.ValidateTf(blob, args, kind, Tb710fuModel)
+            : EdlRawDtbValidator.Validate(blob, args, kind, Tb710fuModel);
+
+        Assert.Equal(kind, evidence.Kind);
+        Assert.Equal(Tb710fuModel, evidence.DeviceModel);
+        Assert.Equal(Tb710fuCompatible, evidence.Compatible);
+        Assert.Equal(stage, evidence.BootStage);
+        Assert.Equal(medium, evidence.RootMedium);
+        Assert.Equal(IndependentSha256(blob), evidence.Sha256);
+    }
+
+    [Theory]
+    [InlineData("lenovo,elden")]
+    [InlineData("lenovo,tb322fc")]
+    [InlineData("lenovo,baldur")]
+    [InlineData("lenovo,tb323fu")]
+    [InlineData("qcom,sm8750")]
+    [InlineData("qcom,sm8850")]
+    [InlineData("qcom,kaanapali")]
+    public void Tb710fuRejectsEveryForeignY700Token(string foreign)
+    {
+        byte[] blob = CreateValidBlob(
+            new[] { "lenovo,tb710fu", foreign, "qcom,sm8650" }, Tb710fuNormalArgs, "os", 5);
+
+        Assert.Throws<InvalidDataException>(() =>
+            EdlRawDtbValidator.Validate(blob, Tb710fuNormalArgs, EdlRawDtbKind.Normal, Tb710fuModel));
+    }
+
+    [Theory]
+    [InlineData("lenovo,tb710fu")]
+    [InlineData("qcom,sm8650")]
+    public void Tb710fuRejectsAMissingHalfOfThePair(string only)
+    {
+        byte[] blob = CreateValidBlob(new[] { only }, Tb710fuNormalArgs, "os", 5);
+
+        Assert.Throws<InvalidDataException>(() =>
+            EdlRawDtbValidator.Validate(blob, Tb710fuNormalArgs, EdlRawDtbKind.Normal, Tb710fuModel));
+    }
+
+    [Fact]
+    public void Tb710fuAndY700BlobsAreNotInterchangeable()
+    {
+        byte[] g4 = CreateValidBlob(G4Compatible, G4NormalArgs, "os", 5);
+        byte[] g5 = CreateValidBlob(G5Compatible, G5NormalArgs, "os", 5);
+        byte[] tb710fu = CreateValidBlob(Tb710fuCompatible, Tb710fuNormalArgs, "os", 5);
+
+        Assert.Throws<InvalidDataException>(() =>
+            EdlRawDtbValidator.Validate(g4, G4NormalArgs, EdlRawDtbKind.Normal, Tb710fuModel));
+        Assert.Throws<InvalidDataException>(() =>
+            EdlRawDtbValidator.Validate(g5, G5NormalArgs, EdlRawDtbKind.Normal, Tb710fuModel));
+        Assert.Throws<InvalidDataException>(() =>
+            EdlRawDtbValidator.Validate(tb710fu, Tb710fuNormalArgs, EdlRawDtbKind.Normal, G4Model));
+        Assert.Throws<InvalidDataException>(() =>
+            EdlRawDtbValidator.Validate(tb710fu, Tb710fuNormalArgs, EdlRawDtbKind.Normal, G5Model));
+    }
+
+    [Fact]
+    public void Y700ForeignTokenListsAreNotTightenedAgainstTb710fu()
+    {
+        // Documented non-tightening: G4/G5 keep exactly their previous foreign pair, so an extra
+        // lenovo,tb710fu token next to a complete G4 pair is still accepted as G4.
+        byte[] blob = CreateValidBlob(
+            new[] { "lenovo,elden", "lenovo,tb710fu", "qcom,sm8750" }, G4NormalArgs, "os", 5);
+
+        EdlRawDtbEvidence evidence = EdlRawDtbValidator.Validate(blob, G4NormalArgs, EdlRawDtbKind.Normal, G4Model);
+
+        Assert.Equal(G4Model, evidence.DeviceModel);
+    }
+
+    [Theory]
+    [InlineData("tb710fu")]
+    [InlineData(" TB710FU")]
+    [InlineData("TB710F")]
+    public void Tb710fuModelMustBeExact(string model)
+    {
+        byte[] blob = CreateValidBlob(Tb710fuCompatible, Tb710fuNormalArgs, "os", 5);
+
+        Assert.Throws<ArgumentException>(() =>
+            EdlRawDtbValidator.Validate(blob, Tb710fuNormalArgs, EdlRawDtbKind.Normal, model));
     }
 
     private static string IndependentSha256(byte[] blob)

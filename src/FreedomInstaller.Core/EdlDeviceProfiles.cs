@@ -248,8 +248,34 @@ public static class EdlDeviceProfiles
         "FreedomInstaller.EdlTools.G5.zip",
         isComplete: true);
 
+    /// <summary>
+    /// The TB710FU (Lenovo Xiaoxin Pad Pro GT, SM8650) profile: one Firehose loader, the
+    /// <c>xbl_s_devprg_ns.melf</c> of the ZUXOS 1.5.04.495 no-unlock supplement, staged as image 13.
+    /// <see cref="EdlDeviceProfile.IsComplete"/> again describes the static identity and loader pin only.
+    /// Being registered here enables identification, the 9008 tool profile and read-only work; the install,
+    /// boot maintenance, uninstall and global restore write routes of this model stay closed through
+    /// <see cref="DeviceModelRoutes"/>.
+    /// </summary>
+    private static EdlDeviceProfile Tb710fu { get; } = new EdlDeviceProfile(
+        "tb710fu-9008-495",
+        "TB710FU",
+        "SM8650",
+        "003050E100400000",
+        Immutable("TB710FU/ZUXOS_1.5.04.495_WITHOUT_UBL/EDL/xbl_s_devprg_ns.melf"),
+        EdlLoaderKind.Single,
+        "tools/tb710fu/firehose.melf",
+        Immutable(
+            new EdlLoaderMaterial(
+                "firehose",
+                13u,
+                "tools/tb710fu/firehose.melf",
+                1573224L,
+                "ad4689b1c52458250d46829ee46a89ec974e69f8e82eee8d4950427919e0b9eb")),
+        "FreedomInstaller.EdlTools.TB710FU.zip",
+        isComplete: true);
+
     /// <summary>The supported models, in the frozen order, as a read-only list.</summary>
-    public static IReadOnlyList<string> Models { get; } = Immutable("TB322FC", "TB323FU");
+    public static IReadOnlyList<string> Models { get; } = Immutable("TB322FC", "TB323FU", "TB710FU");
 
     /// <summary>
     /// Exact ordinal profile lookup. A null, blank or unknown id returns null; a differently cased or
@@ -270,6 +296,11 @@ public static class EdlDeviceProfiles
         if (string.Equals(profileId, G5.ProfileId, StringComparison.Ordinal))
         {
             return G5;
+        }
+
+        if (string.Equals(profileId, Tb710fu.ProfileId, StringComparison.Ordinal))
+        {
+            return Tb710fu;
         }
 
         return null;
@@ -294,6 +325,11 @@ public static class EdlDeviceProfiles
         if (string.Equals(model, G5.Model, StringComparison.OrdinalIgnoreCase))
         {
             return G5;
+        }
+
+        if (string.Equals(model, Tb710fu.Model, StringComparison.OrdinalIgnoreCase))
+        {
+            return Tb710fu;
         }
 
         return null;

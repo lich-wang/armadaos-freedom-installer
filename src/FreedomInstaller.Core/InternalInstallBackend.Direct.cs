@@ -120,6 +120,15 @@ public sealed partial class InternalInstallBackend
     private static void RequireDirectDeviceProfile(InternalDeviceCheckResult deviceCheck)
     {
         DeviceIdentity identity = deviceCheck.Android!.Identity;
+
+        // A model registered only for identification and read-only work never reaches the direct install.
+        if (DeviceModelRoutes.IsWriteRoutePending(identity.Model))
+        {
+            throw Refuse(
+                DeviceModelRoutes.RoutePendingCode,
+                "the install write route of model '" + identity.Model + "' is not open yet; nothing is prepared.");
+        }
+
         EdlDeviceProfile? profile = EdlDeviceProfiles.FindByModel(identity.Model);
 
         if (profile is null || !profile.IsComplete || !profile.SupportsIdentity(identity))

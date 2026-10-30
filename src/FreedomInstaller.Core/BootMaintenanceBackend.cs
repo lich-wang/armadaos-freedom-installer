@@ -814,6 +814,9 @@ public sealed partial class BootMaintenanceBackend : IDisposable
                 BindingMismatchCode + ": the loaded toolchain carries no trusted EDL profile.");
         }
 
+        // Boot maintenance writes boot partitions: a model whose maintenance route is not open stops here.
+        DeviceModelRoutes.RequireWriteRoute(profile.Model);
+
         if (!ReferenceEquals(EdlDeviceProfiles.FindById(profile.ProfileId), profile))
         {
             throw new InvalidOperationException(

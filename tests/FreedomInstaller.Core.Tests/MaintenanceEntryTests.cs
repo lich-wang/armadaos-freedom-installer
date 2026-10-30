@@ -87,6 +87,22 @@ public sealed class MaintenanceEntryAndroidReadTests
         Assert.Equal(identity.Model, result.Identity.Model);
     }
 
+    [Fact]
+    public async Task ReadAndroidAsync_accepts_tb710fu_for_the_read_only_soc_serial()
+    {
+        var runner = new FakeCommandRunner().Enqueue(new ProcessResult(0, SocSerial + "\n", string.Empty));
+        var entry = CreateEntry(runner);
+
+        var result = await entry.ReadAndroidAsync(CreateIdentity("TB710FU"));
+
+        var command = Assert.Single(runner.Commands);
+        Assert.Equal(
+            new[] { "-s", Serial, "shell", "cat", "/sys/devices/soc0/serial_number" },
+            command.Arguments);
+        Assert.Equal("TB710FU", result.Identity.Model);
+        Assert.Equal(SocSerial, result.SocSerial);
+    }
+
     [Theory]
     [InlineData(1, "0A1B2C3D")]
     [InlineData(0, "")]
@@ -158,6 +174,16 @@ public sealed class MaintenanceEntryBootTemporaryTests
         var entry = new MaintenanceEntry(AdbPath, FastbootPath, runner);
 
         await RedAssert.RejectedAsync(() => entry.BootTemporaryAsync(CreateAndroid(model: "TB323FU"), MissingBootPath));
+        Assert.Empty(runner.Commands);
+    }
+
+    [Fact]
+    public async Task BootTemporaryAsync_still_rejects_tb710fu_before_running_any_command()
+    {
+        var runner = new FakeCommandRunner();
+        var entry = new MaintenanceEntry(AdbPath, FastbootPath, runner);
+
+        await RedAssert.RejectedAsync(() => entry.BootTemporaryAsync(CreateAndroid(model: "TB710FU"), MissingBootPath));
         Assert.Empty(runner.Commands);
     }
 

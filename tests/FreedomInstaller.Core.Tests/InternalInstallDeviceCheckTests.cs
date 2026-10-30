@@ -579,6 +579,74 @@ public sealed class InternalInstallDeviceCheckTests
         Assert.Equal(0, runner.ForbiddenModeCommands);
     }
 
+    [Theory]
+    [InlineData("topaz_prc_wifi")]
+    [InlineData("TB710FU")]
+    [InlineData("TOPAZ_PRC_WIFI")]
+    public async Task Check_Tb710fuAcceptsOnlyItsOwnProductAliases(string product)
+    {
+        var runner = new DeviceCheckRunner(
+            Serial,
+            new DeviceCheckClock(),
+            model: "TB710FU",
+            displayId: "TB710FU.synthetic.firmware")
+        {
+            FastbootProductValue = product,
+            SnapshotStatus = "none",
+        };
+        var check = CreateCheck(runner);
+
+        var result = await check.CheckAsync(Serial);
+
+        // Step 1 is read-only plus the two reboots; succeeding here grants no write route.
+        Assert.True(result.Succeeded, result.Error);
+        Assert.Equal("TB710FU", result.Android!.Identity.Model);
+        Assert.Equal(AndroidReturnState.Verified, result.AndroidReturn);
+        Assert.Equal(0, runner.ForbiddenModeCommands);
+    }
+
+    [Theory]
+    [InlineData("elden_prc_wifi")]
+    [InlineData("TB322FC")]
+    [InlineData("TB323FU")]
+    [InlineData("fixture-unmapped-board")]
+    [InlineData("topaz_row_wifi")]
+    public async Task Check_Tb710fuRejectsEveryOtherProduct(string product)
+    {
+        var runner = new DeviceCheckRunner(
+            Serial,
+            new DeviceCheckClock(),
+            model: "TB710FU",
+            displayId: "TB710FU.synthetic.firmware")
+        {
+            FastbootProductValue = product,
+            SnapshotStatus = "none",
+        };
+        var check = CreateCheck(runner);
+
+        var result = await check.CheckAsync(Serial);
+
+        Assert.False(result.Succeeded);
+        Assert.Equal(AndroidReturnState.Verified, result.AndroidReturn);
+        Assert.Equal(1, runner.FastbootReboots);
+        Assert.Equal(0, runner.ForbiddenModeCommands);
+    }
+
+    [Fact]
+    public async Task Check_G4RejectsTheTb710fuProduct()
+    {
+        var runner = new DeviceCheckRunner(Serial, new DeviceCheckClock())
+        {
+            FastbootProductValue = "topaz_prc_wifi",
+        };
+        var check = CreateCheck(runner);
+
+        var result = await check.CheckAsync(Serial);
+
+        Assert.False(result.Succeeded);
+        Assert.Equal(AndroidReturnState.Verified, result.AndroidReturn);
+    }
+
     [Fact]
     public async Task Check_InitialActualSerialMismatchStopsBeforeModeSwitch()
     {
