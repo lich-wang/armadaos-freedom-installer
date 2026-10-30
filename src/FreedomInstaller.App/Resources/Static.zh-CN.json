@@ -28,6 +28,7 @@
   "Static.BootCompatAndroidNote": "安卓上报用于路线预检；现有 Fastboot 流程仍需单独确认。",
   "Static.BootCompatTb322Fc": "TB322FC：部分固件可免解锁启动；先读取当前固件，再核对适用条件。",
   "Static.BootCompatTb323Fu": "五代 TB323FU：写入流程尚未验证，不要使用四代的 loader 或恢复方案。",
+  "Static.BootCompatTb710Fu": "TB710FU（小新 Pad Pro GT）：目前只开放识别、9008 工具与只读全局备份；安装、维护、卸载与恢复写入尚未开放。",
   "Static.BootCompatTitle": "引导兼容性",
   "Static.BootPending": "待确认",
   "Static.BrandSubtitle": "面向 ARM 平板的 SteamOS 风格 Linux 系统 · Steam 游戏模式、KDE Plasma 桌面与 kShimC 多系统启动",

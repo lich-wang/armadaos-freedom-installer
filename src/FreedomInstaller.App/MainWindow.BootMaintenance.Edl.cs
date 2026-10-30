@@ -194,6 +194,11 @@ public partial class MainWindow
                     SetInternalInstallCheckStatus(M("Dynamic.BootMaintenance.Edl.ReadOnlyFailed"));
                     AppendLocalizedLog(M("Dynamic.RawValue", ex.Message));
                 }
+                catch (Exception ex) when (DeviceModelRoutes.IsRouteRefusal(ex))
+                {
+                    // A historical backup of a model whose write routes are not open: refused before any firehose command.
+                    SetInternalInstallCheckStatus(M("Dynamic.Model.RoutePendingInEdl", DeviceModelRoutes.Tb710fuModel));
+                }
                 catch (Exception ex)
                 {
                     SetInternalInstallCheckStatus(M("Dynamic.BootMaintenance.Edl.ReadOnlyFailed"));

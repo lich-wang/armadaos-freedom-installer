@@ -110,6 +110,14 @@ public partial class MainWindow
             _runner);
         var android = await maintenance.ReadAndroidAsync(identity, token);
 
+        // 只开放识别与只读检查的型号（TB710FU）：如实说明，不提交读取事实，后续维护 / 卸载入口保持关闭。
+        if (DeviceModelRoutes.IsWriteRoutePending(android.Identity?.Model))
+        {
+            SetInternalInstallCheckStatus(
+                M("Dynamic.Model.RoutePending", Placeholder(android.Identity?.Model)));
+            return;
+        }
+
         var profile = EdlDeviceProfiles.FindByModel(android.Identity?.Model);
         if (android.Identity is null
             || profile is null

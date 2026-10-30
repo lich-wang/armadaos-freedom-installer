@@ -479,6 +479,15 @@ public partial class MainWindow
         // 信任的 EDL 配置只按实际核对到的型号选择：缺失、不完整、不支持这台平板的完整身份，
         // 或还没有随附工具归档时，一律停在安卓，不发设备命令，也不解包任何工具。
         var selectedIdentity = storedAndroid.Identity;
+
+        // 只开放识别与只读检查的型号（TB710FU）：安装备份属于安装路线，在进入 9008 之前停下。
+        if (DeviceModelRoutes.IsWriteRoutePending(selectedIdentity.Model))
+        {
+            SetInternalInstallBackupStatus(
+                M("Dynamic.Model.RoutePending", Placeholder(selectedIdentity.Model)));
+            return;
+        }
+
         var profile = EdlDeviceProfiles.FindByModel(selectedIdentity.Model);
         if (profile is null
             || !profile.IsComplete
