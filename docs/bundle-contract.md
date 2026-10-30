@@ -7,7 +7,7 @@
 - 根目录 `bundle.json`：`schemaVersion` 为 2，`bundleId` 为 `armadaos-freedom`，包含系统包版本和型号列表。
 - `common/boot/kernel.img`、`common/boot/initramfs.img`：共用内核和 initramfs。
 - `common/images/linux-boot.ext4.gz`、`common/images/linux-root.btrfs.gz`：共用压缩分区镜像。
-- `models/TB322FC/`、`models/TB323FU/`：各型号的 `package.json`、runtime 和 normal/diagnostic 启动文件。
+- `models/TB322FC/`、`models/TB323FU/`、`models/TB710FU/`：各型号的 `package.json`、runtime 和 normal/diagnostic 启动文件。
 
 `packages[]` 中每项以 `deviceModel` 指定型号，以 `directory` 指定型号目录；`sharedFiles[]` 将 `common/` 内的 `source` 映射到所选型号暂存目录的 `destination`。例如 `common/images/linux-root.btrfs.gz` 映射为 `images/linux-root.btrfs.gz`。
 

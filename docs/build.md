@@ -32,12 +32,15 @@ python3 maintenance/fetch_build_inputs.py --output-dir /inputs --verify-only
 | `BundledPlatformToolsArchive` | Windows platform-tools 37.0.1 |
 | `BundledEdlArchive` | 四代 TB322FC 的 9008 工具包 |
 | `BundledEdlG5Archive` | 五代 TB323FU 的独立 9008 工具包 |
+| `BundledEdlTb710fuArchive` | TB710FU 的独立 9008 工具归档（可选，不在 `build-inputs.json` 中） |
 | `BundledQualcommDriverArchive` | Qualcomm 2.1.5.2 AMD64 驱动包 |
 | `BundledEdlRawPacker` | 修改版 `MultiBootKernelPatcher.exe` |
 | `BundledEdlRawUnpacker` | 修改版 `UnpackTool.exe` |
 | `BundledAvbSigningKey` | AOSP 公开 AVB RSA4096 测试材料 |
 | `BundledGblPrcEfi` | GBL 6.2.192-mod2 PRC EFI |
 | `BundledGblRowEfi` | GBL 6.2.192-mod2 ROW EFI |
+
+TB710FU 归档可以不提供：未内置归档时 TB710FU 的 9008 流程会提示缺少工具并停止；设置了路径但文件不存在时发布仍会停止。归档格式与其他型号相同：根目录 `manifest.json`（`schemaVersion` 为 1，`profileId` 为 `tb710fu-9008-495`，`model` 为 `TB710FU`，`androidBuild` 为加载器来源 `TB710FU/ZUXOS_1.5.04.495_WITHOUT_UBL/EDL/xbl_s_devprg_ns.melf`，`hardwareId` 为 `003050E100400000`），共用角色（`tools/edl-ng.exe`、`tools/libusb-1.0.dll`、`tools/LICENSE.txt`、Python 嵌入包与 `scripts/` 下的四个脚本）及其既有固定校验值，外加唯一的加载器 `tools/tb710fu/firehose.melf`（1573224 字节，SHA-256 `ad4689b1c52458250d46829ee46a89ec974e69f8e82eee8d4950427919e0b9eb`）。
 
 ## 修改底层工具
 
