@@ -169,6 +169,13 @@ public static class InternalSlotMaterialReader
     private const long KnownXblBytes = 352256;
     private const string KnownBAblSha256 = "811489f0cefb662bccf91a89d2b50187cc1e8fb949486421fe19f820981ecae0";
     private const string KnownBXblSha256 = "1a937da630c966372a67ba60d0103997f61ce7d1df086b7b6c68e4fcc0ba73c3";
+    // TB710FU (ZUXOS 1.5.04.495 loaders; A and B are identical). Its xbl_config also reserves the
+    // Kernel region memory@A8000000 / 0x10000000, so the same 256 MiB window arithmetic applies.
+    private const string Tb710fuProfile = "tb710fu-abl495-xbl-config-ramdisk-derived";
+    private const string Tb710fuAblSha256 = "6cfa16e65c2dadd0fc557dd356e6c383c693b4c3b7f0a651d92bb9f6e38b74a8";
+    private const long Tb710fuAblBytes = 1048576;
+    private const string Tb710fuXblSha256 = "388eb4d311993e9b314f058d11f1fb1b486ed2536090b086ea95ffbbc9ec9ce6";
+    private const long Tb710fuXblBytes = 245760;
     private const int KnownPage = 4096;
     private const int KnownV4Headers = 3;
 
@@ -730,7 +737,15 @@ public static class InternalSlotMaterialReader
             pageSize == KnownPage &&
             v4HeaderCount == KnownV4Headers;
 
-        if (known)
+        bool knownTb710fu =
+            string.Equals(ablSha256, Tb710fuAblSha256, StringComparison.Ordinal) &&
+            string.Equals(xblSha256, Tb710fuXblSha256, StringComparison.Ordinal) &&
+            ablBytes == Tb710fuAblBytes &&
+            xblBytes == Tb710fuXblBytes &&
+            pageSize == KnownPage &&
+            v4HeaderCount == KnownV4Headers;
+
+        if (known || knownTb710fu)
         {
             long aligned = AlignUp(total, LoaderAlign);
             long room = LoaderWindow - LoaderHeadReserve - aligned - LoaderGuard - LoaderTailReserve;
@@ -738,6 +753,16 @@ public static class InternalSlotMaterialReader
             {
                 throw Reject("loader_budget", $"non-positive raw room {room}");
             }
+            if (knownTb710fu)
+            {
+                return new InternalSlotLoaderBudget(
+                    Tb710fuProfile,
+                    room,
+                    true,
+                    "identified the TB710FU ZUXOS 495 ABL/xbl_config full sha256+length (same on A and B), page 4096, three validated v4 headers; xbl_config Kernel region memory@A8000000 size 0x10000000; a 155 MiB unpacked kShimC boot was booted on this loader pair",
+                    $"max_raw_bytes = 268435456 - 524288 - align_up({total}, 4096) - 8192 - 2097152");
+            }
+
             return new InternalSlotLoaderBudget(
                 KnownProfile,
                 room,

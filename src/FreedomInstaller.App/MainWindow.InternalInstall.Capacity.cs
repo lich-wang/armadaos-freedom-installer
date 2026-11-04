@@ -927,6 +927,13 @@ public partial class MainWindow
                 preparedSummaryMessage,
                 M("Dynamic.InternalInstall.Prepared.GblInstallMode"));
         }
+        else if (prepared.BootTrustMode == InternalInstallBootTrustMode.AospPreserved)
+        {
+            preparedSummaryMessage = M(
+                "Dynamic.InternalInstall.Execution.WithFailureDetails",
+                preparedSummaryMessage,
+                M("Dynamic.InternalInstall.Prepared.AospPreservedInstallMode"));
+        }
 
         // 主摘要的 18 个参数保持原样，事实告警只作为第二段追加在它后面。
         SetText(

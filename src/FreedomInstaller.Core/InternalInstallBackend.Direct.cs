@@ -122,7 +122,7 @@ public sealed partial class InternalInstallBackend
         DeviceIdentity identity = deviceCheck.Android!.Identity;
 
         // A model registered only for identification and read-only work never reaches the direct install.
-        if (DeviceModelRoutes.IsWriteRoutePending(identity.Model))
+        if (DeviceModelRoutes.IsInstallRoutePending(identity.Model))
         {
             throw Refuse(
                 DeviceModelRoutes.RoutePendingCode,

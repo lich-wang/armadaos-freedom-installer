@@ -16,6 +16,9 @@ internal static class BootSettingsRegion
     {
         "TB322FC" => 1,
         "TB323FU" => 2,
+        // Free value in kShimC's device_board enum; kShimC without TB710FU board support treats it as
+        // unknown and boots the manifest defaults.
+        "TB710FU" => 3,
         _ => throw new InvalidDataException("No launcher settings profile for this model.")
     };
 

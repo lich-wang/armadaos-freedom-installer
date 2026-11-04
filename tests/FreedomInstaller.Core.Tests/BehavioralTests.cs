@@ -80,6 +80,24 @@ public sealed class BehavioralTests
     // ---------------------------------------------------------------- model identity
 
     [Fact]
+    public void IdentifyModel_FallsBackToTheBootImageModelOnlyWithoutAPrimaryClaim()
+    {
+        // HyperOS port on a TB710FU: the product properties are a Xiaomi model.
+        Assert.Equal(
+            "TB710FU",
+            DeviceProbe.IdentifyModel(
+                "[ro.product.model]: [25091RP04C]\n[ro.product.vendor.model]: [Xiaomi for arm64]\n"
+                + "[ro.product.name]: [piano]\n[ro.product.bootimage.model]: [TB710FU]"));
+
+        // A primary claim always wins; the boot image property can neither override nor contradict it.
+        Assert.Equal(
+            "TB322FC",
+            DeviceProbe.IdentifyModel("[ro.product.model]: [TB322FC]\n[ro.product.bootimage.model]: [TB323FU]"));
+
+        Assert.Null(DeviceProbe.IdentifyModel("[ro.product.bootimage.model]: [SomethingElse]"));
+    }
+
+    [Fact]
     public void IdentifyModel_CanonicalizesExactTicketModels()
     {
         Assert.Equal(
