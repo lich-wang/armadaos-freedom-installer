@@ -96,6 +96,48 @@ public sealed class SharedBundleImportTests
         Assert.Equal(archiveHash, Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(archive))));
     }
 
+    // ------------------------------------------------------------------------------ unknown models
+
+    [Theory]
+    [InlineData("zip")]
+    [InlineData("tar")]
+    public async Task Import_Schema2BundleSkipsAnEntryForAModelThisInstallerDoesNotKnow(string format)
+    {
+        using var fixture = new ImportFixture();
+        var builder = new SharedBundleBuilder(fixture, format);
+        // Listed first and mapped to a shared source the archive does not contain:
+        // the entry is shape-checked but never selected, so neither matters.
+        builder.AddUnknownModelFirst("TB999ZZ", "common/missing/unknown.bin");
+        var archive = builder.Write();
+
+        using var imported = await PackageImporter.ImportAsync(
+            archive, ModelA, InstallationTarget.Internal, fixture.WorkRoot);
+
+        Assert.True(imported.Validation.IsValid, Join(imported.Validation.Reasons));
+        Assert.Equal(ModelA, imported.DeviceModel);
+        var manifestPath = Assert.Single(Directory.GetFiles(
+            fixture.WorkRoot, PackageJsonFileName, SearchOption.AllDirectories));
+        Assert.Equal(builder.Manifests[ModelA], File.ReadAllBytes(manifestPath));
+        Assert.DoesNotContain(
+            Directory.GetFiles(fixture.WorkRoot, "*", SearchOption.AllDirectories),
+            path => path.Contains("TB999ZZ", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task Import_Schema2BundleStillShapeChecksAnUnknownModelEntry()
+    {
+        using var fixture = new ImportFixture();
+        var builder = new SharedBundleBuilder(fixture, "zip");
+        builder.AddUnknownModelFirst("TB999ZZ", "common/missing/unknown.bin");
+        builder.Package("TB999ZZ").Remove("sharedFiles");
+        var archive = builder.Write();
+
+        using var imported = await PackageImporter.ImportAsync(
+            archive, ModelA, InstallationTarget.Internal, fixture.WorkRoot);
+
+        AssertRejected(fixture, imported, archive);
+    }
+
     // -------------------------------------------------------------------------- missing shared data
 
     [Fact]
@@ -311,6 +353,21 @@ public sealed class SharedBundleImportTests
                 .Single(package => package["deviceModel"]!.GetValue<string>() == model);
 
         internal void SetEntry(string path, byte[] content) => _entries[path] = content;
+
+        /// <summary>Adds a packages[] entry for a model the installer does not support, ahead of the others.</summary>
+        internal void AddUnknownModelFirst(string model, string sharedSource)
+        {
+            SetEntry("models/" + model + "/" + PackageJsonFileName, Encoding.UTF8.GetBytes("{}"));
+            _packages.Insert(0, new JsonObject
+            {
+                ["deviceModel"] = model,
+                ["directory"] = "models/" + model,
+                ["sharedFiles"] = new JsonArray
+                {
+                    new JsonObject { ["source"] = sharedSource, ["destination"] = SeedDestination },
+                },
+            });
+        }
 
         internal void RemoveEntry(string path) => _entries.Remove(path);
 
