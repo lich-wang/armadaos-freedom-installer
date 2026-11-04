@@ -67,6 +67,7 @@ public partial class MainWindow
             return result is { Succeeded: true, AndroidReturn: AndroidReturnState.Verified }
                 && identity is not null
                 && !string.IsNullOrWhiteSpace(identity.Model)
+                && !DeviceModelRoutes.IsInstallRoutePending(identity.Model)
                 && !string.IsNullOrWhiteSpace(identity.Serial)
                 && !string.IsNullOrWhiteSpace(identity.Firmware?.DisplayId)
                 && !string.IsNullOrWhiteSpace(result.Android?.SocSerial);
@@ -411,7 +412,11 @@ public partial class MainWindow
         }
 
         SetText(InternalInstallRouteText, "Dynamic.InternalInstall.Check.RouteUnavailable");
-        SetText(InternalInstallCheckStatusText, "Dynamic.InternalInstall.Check.ProfileUnavailable");
+        SetText(
+            InternalInstallCheckStatusText,
+            DeviceModelRoutes.IsInstallRoutePending(identity?.Model)
+                ? M("Dynamic.Model.RoutePending", Placeholder(identity?.Model))
+                : M("Dynamic.InternalInstall.Check.ProfileUnavailable"));
     }
 
     /// <summary>A new check drops every later result; a live 9008 session never reaches here.</summary>
@@ -1077,6 +1082,8 @@ public partial class MainWindow
         {
             InternalInstallBootTrustMode.GblPreserveOem =>
                 M("Dynamic.InternalInstall.Execution.WithFailureDetails", summary, M("Dynamic.InternalInstall.Prepared.GblInstallMode")),
+            InternalInstallBootTrustMode.AospPreserved =>
+                M("Dynamic.InternalInstall.Execution.WithFailureDetails", summary, M("Dynamic.InternalInstall.Prepared.AospPreservedInstallMode")),
             _ => summary,
         };
         SetText(
