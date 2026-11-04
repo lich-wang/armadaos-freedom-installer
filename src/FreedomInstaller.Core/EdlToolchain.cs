@@ -64,7 +64,7 @@ namespace FreedomInstaller.Core
             {
                 {
                     "client",
-                    (12015022L, "655530e926b57d70f1c690869c495253a6eaae28746f370d5b9dbf921d4a4b3b")
+                    (12014576L, "ad3e133f464f8fcdb5f5999bed92b4f7ac415391b10cbe003ca116d0485bebbe")
                 },
                 {
                     "python",

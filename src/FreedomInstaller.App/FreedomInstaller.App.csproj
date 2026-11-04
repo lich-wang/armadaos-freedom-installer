@@ -123,7 +123,9 @@
        The externally supplied Qualcomm USB driver pack is validated here as well. -->
   <!-- Fork only: -p:ArmadaForkTb710fuOnly=true publishes a TB710FU-only installer without the Y700 (G4/G5)
        EDL archives and the GBL runtime EFIs, which only the Y700 routes use; those flows then stop with
-       their existing "tools missing" errors. A path that is set must still exist. -->
+       their existing "tools missing" errors. The Qualcomm driver pack is optional too: the environment
+       check still accepts an already installed qcusbser/WinUSB 9008 driver, only the "install driver"
+       action then fails. A path that is set must still exist. -->
   <Target Name="ValidateBundledPlatformToolsArchive" BeforeTargets="PrepareForPublish;Publish">
     <Error Condition="'$(PublishSingleFile)' == 'true' and '$(BundledPlatformToolsArchive)' == ''"
            Code="FRDM1001"
@@ -172,7 +174,7 @@
     <Error Condition="'$(PublishSingleFile)' == 'true' and '$(BundledGblRowEfi)' != '' and !Exists('$(BundledGblRowEfi)')"
            Code="FRDM1022"
            Text="BundledGblRowEfi '$(BundledGblRowEfi)' does not exist. Point it at the existing pinned standard ROW GBL runtime EFI file; the build never downloads it." />
-    <Error Condition="'$(PublishSingleFile)' == 'true' and '$(BundledQualcommDriverArchive)' == ''"
+    <Error Condition="'$(PublishSingleFile)' == 'true' and '$(BundledQualcommDriverArchive)' == '' and '$(ArmadaForkTb710fuOnly)' != 'true'"
            Code="FRDM1023"
            Text="BundledQualcommDriverArchive is not set. Set it to the absolute path of the existing Qualcomm USB driver pack archive before publishing the single-file installer; the build never downloads or generates it." />
     <Error Condition="'$(PublishSingleFile)' == 'true' and '$(BundledQualcommDriverArchive)' != '' and !Exists('$(BundledQualcommDriverArchive)')"

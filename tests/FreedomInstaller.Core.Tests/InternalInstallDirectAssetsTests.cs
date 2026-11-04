@@ -30,16 +30,16 @@ public sealed class InternalInstallDirectAssetsTests
     private const string PinMismatchCode = "edl-raw-boot-tool-pin-mismatch";
 
     /// <summary>Compiled packer pin, restated literally on purpose.</summary>
-    private const long PackerBytes = 277460L;
+    private const long PackerBytes = 121290L;
 
     private const string PackerSha256 =
-        "a2f03fc6b0e5d1b8defb60dd2a880bd5933c5133613778b17690172570ac20bb";
+        "d7f20a683ddea6e46c85b75726892a06ae7d50cc25af26c6d09792d4212a0909";
 
     /// <summary>Compiled unpacker pin, restated literally on purpose.</summary>
-    private const long UnpackerBytes = 262703L;
+    private const long UnpackerBytes = 106021L;
 
     private const string UnpackerSha256 =
-        "24d4788646282d23665b61b28460808480420a0a72e45afca6ab1a167b4b656f";
+        "3e59359008a14d8e4139f42795b3c3f5cc67f3a263e936dea77242d5c6a4adbc";
 
     private const string PackerPathVariable = "EDL_RAW_PACKER_PATH";
 

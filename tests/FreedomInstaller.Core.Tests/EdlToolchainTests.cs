@@ -57,11 +57,11 @@ namespace FreedomInstaller.Core.Tests
         private const string GptRelPath = "scripts/portable_gpt.py";
         private const string GptCliRelPath = "scripts/edl_gpt_cli.py";
 
-        private const long ClientPinBytes = 12015022L;
+        private const long ClientPinBytes = 12014576L;
         private const long FirehosePinBytes = 1697740L;
         private const long PythonPinBytes = 12601679L;
 
-        private const string ClientPinSha = "655530e926b57d70f1c690869c495253a6eaae28746f370d5b9dbf921d4a4b3b";
+        private const string ClientPinSha = "ad3e133f464f8fcdb5f5999bed92b4f7ac415391b10cbe003ca116d0485bebbe";
         private const string FirehosePinSha = "a38993803139d881f47adfa66309f8d5e545c2e33eb4576d0a585afae9cd3da0";
         private const string PythonPinSha = "a93abe456ab01bd96d7a085b3cdb6566b3063f4241360d114142fbdb07f0a310";
 
