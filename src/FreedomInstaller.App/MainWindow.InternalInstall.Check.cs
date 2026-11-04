@@ -67,7 +67,7 @@ public partial class MainWindow
 
             // 只开放识别与只读检查的型号（TB710FU）不构成进入备份页的证据：安装写入路线尚未开放。
             return !string.IsNullOrWhiteSpace(identity.Model)
-                && !DeviceModelRoutes.IsWriteRoutePending(identity.Model)
+                && !DeviceModelRoutes.IsInstallRoutePending(identity.Model)
                 && !string.IsNullOrWhiteSpace(identity.Serial)
                 && !string.IsNullOrWhiteSpace(identity.Firmware?.DisplayId)
                 && !string.IsNullOrWhiteSpace(android.SocSerial);
@@ -620,7 +620,7 @@ public partial class MainWindow
         }
 
         // 检查本身通过，但该型号只开放识别与只读检查：如实说明，备份门槛保持关闭。
-        if (DeviceModelRoutes.IsWriteRoutePending(identity?.Model))
+        if (DeviceModelRoutes.IsInstallRoutePending(identity?.Model))
         {
             SetText(InternalInstallRouteText, "Dynamic.InternalInstall.Check.RouteUnavailable");
             SetInternalInstallCheckStatus(M("Dynamic.Model.RoutePending", Placeholder(identity?.Model)));

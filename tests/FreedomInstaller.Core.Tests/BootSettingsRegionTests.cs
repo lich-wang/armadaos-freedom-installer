@@ -26,15 +26,10 @@ public sealed class BootSettingsRegionTests
     private static void Verify(byte[] region, string model = "TB322FC", long end = 1048576) =>
         Call("VerifyRegion", region, Partition, Installation, model, end);
 
-    [Fact]
-    public void Descriptor_has_no_launcher_settings_board_for_tb710fu_yet()
-    {
-        Assert.Throws<InvalidDataException>(() => Descriptor("TB710FU"));
-    }
-
     [Theory]
     [InlineData("TB322FC", 1u)]
     [InlineData("TB323FU", 2u)]
+    [InlineData("TB710FU", 3u)]
     public void Descriptor_matches_the_bootloader_wire_format(string model, uint board)
     {
         var d = Descriptor(model);

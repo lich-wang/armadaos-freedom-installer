@@ -287,6 +287,7 @@
   "Dynamic.InternalInstall.Prepared.GblBootChainKeyMismatch": "The backup's boot verification data does not form a matching signing chain. Use a complete backup from this tablet in the same system state; do not mix backups from different tablets or system states. Installation has not started.",
   "Dynamic.InternalInstall.Prepared.GblRuntimeRegionUnknown": "A consistent system region (PRC/ROW) could not be confirmed from the tablet's boot data, or the slots report conflicting regions. Keep the installation diagnostics and report this to the project. Installation has not started; the region will not be guessed from the interface language or other assumptions.",
   "Dynamic.InternalInstall.Prepared.GblInstallMode": "Installation method: without unlocking the bootloader",
+  "Dynamic.InternalInstall.Prepared.AospPreservedInstallMode": "Install mode: only boot is written (signed with the AOSP test key); vbmeta, vbmeta_system and recovery stay unchanged.",
   "Dynamic.InternalInstall.Execution.Stage.Prepared": "Preparation complete",
   "Dynamic.InternalInstall.Execution.Stage.Revalidating": "Rechecking the device and install inputs",
   "Dynamic.InternalInstall.Execution.Stage.WritingMaintenanceBoot": "Writing the new maintenance boot",

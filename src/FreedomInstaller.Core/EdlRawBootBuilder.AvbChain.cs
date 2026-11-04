@@ -300,7 +300,8 @@ public static partial class EdlRawBootBuilder
         FileStream source,
         EdlRawAvbNodeKind kind,
         long sourceLength,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        bool allowForeignNonBootChainKeys = false)
     {
         if (sourceLength < AvbFooterBytes)
         {
@@ -342,7 +343,7 @@ public static partial class EdlRawBootBuilder
         byte[] blob = new byte[vbmetaSize];
         ReadExactly(source, blob, vbmetaOffset, vbmetaSize);
 
-        return AvbNodeParse(blob, vbmetaOffset, kind == EdlRawAvbNodeKind.Vbmeta);
+        return AvbNodeParse(blob, vbmetaOffset, kind == EdlRawAvbNodeKind.Vbmeta, allowForeignNonBootChainKeys);
     }
 
     // P1 common footer leaf reader: bounded footer read plus the shared AVB0
@@ -402,7 +403,11 @@ public static partial class EdlRawBootBuilder
         return AvbNodeParse(blob, vbmetaOffset, false);
     }
 
-    private static AvbNodeMetadata AvbNodeParse(byte[] blob, long vbmetaOffset, bool requireRootChains)
+    // allowForeignNonBootChainKeys is the read-only preserved-chain authentication only: a recovery or
+    // vbmeta_system chain may then carry another key size (TB710FU's vbmeta_system chain is RSA2048). Such a
+    // chain is recorded with KeyOffset -1 and can never be rekeyed; the boot chain keeps every check.
+    private static AvbNodeMetadata AvbNodeParse(
+        byte[] blob, long vbmetaOffset, bool requireRootChains, bool allowForeignNonBootChainKeys = false)
     {
         if (blob.Length < VbmetaHeaderBytes)
         {
@@ -580,6 +585,27 @@ public static partial class EdlRawBootBuilder
                         throw new InvalidDataException("AVB chain partition key exceeds the descriptor.");
                     }
 
+                    string name = AvbNodeReadAsciiName(blob, nameStart, (int)nameLength);
+
+                    bool standardKey = keyLength == AvbPublicKeyBytes
+                        && keyLength >= 4
+                        && ReadBeU32(blob, keyStart) == 4096;
+
+                    if (!standardKey
+                        && allowForeignNonBootChainKeys
+                        && !string.Equals(name, "boot", StringComparison.Ordinal))
+                    {
+                        chainKeys.Add(new AvbNodeChainKey
+                        {
+                            Name = name,
+                            KeyOffset = -1,
+                            Location = ReadBeU32(blob, position + 16),
+                            Flags = ReadBeU32(blob, position + 28)
+                        });
+                        position += total;
+                        continue;
+                    }
+
                     if (keyLength != AvbPublicKeyBytes)
                     {
                         throw new InvalidDataException("AVB chain partition key is not 1032 bytes.");
@@ -589,8 +615,6 @@ public static partial class EdlRawBootBuilder
                     {
                         throw new InvalidDataException("AVB chain partition key is not 4096 bits.");
                     }
-
-                    string name = AvbNodeReadAsciiName(blob, nameStart, (int)nameLength);
                     chainKeys.Add(new AvbNodeChainKey
                     {
                         Name = name,

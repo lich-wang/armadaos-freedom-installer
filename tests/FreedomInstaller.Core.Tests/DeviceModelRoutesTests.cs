@@ -82,12 +82,16 @@ public sealed class DeviceModelRoutesTests
     }
 
     [Fact]
-    public void Direct_install_profile_gate_refuses_tb710fu_with_the_route_pending_code()
+    public void Direct_install_profile_gate_lets_tb710fu_through_the_open_install_route()
     {
+        Assert.False(DeviceModelRoutes.IsInstallRoutePending("TB710FU"));
+        DeviceModelRoutes.RequireInstallRoute("TB710FU");
+
         var failure = InvokeRequireDirectDeviceProfile(Check("TB710FU", "TB710FU_SYNTHETIC_ACTUAL_FIRMWARE"));
 
-        var refusal = Assert.IsType<InvalidOperationException>(failure);
-        Assert.StartsWith(DeviceModelRoutes.RoutePendingCode + ":", refusal.Message, StringComparison.Ordinal);
+        // The install route is open; the remaining write routes stay pending.
+        Assert.Null(failure);
+        Assert.True(DeviceModelRoutes.IsWriteRoutePending("TB710FU"));
     }
 
     [Fact]

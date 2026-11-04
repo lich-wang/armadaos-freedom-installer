@@ -147,7 +147,8 @@ internal sealed partial class InternalInstallPreparationContext : IDisposable
         long directExecutionSpaceBytes = 0,
         IReadOnlyDictionary<string, EdlRawResignedAvbNode>? directAvbRoots = null,
         IReadOnlyList<DirectAvbMetadataNode>? directAvbNodes = null,
-        VerifiedGblPlan? directGblPlan = null)
+        VerifiedGblPlan? directGblPlan = null,
+        bool directAospPreserved = false)
     {
         _package = package;
         _assets = assets;
@@ -184,6 +185,14 @@ internal sealed partial class InternalInstallPreparationContext : IDisposable
         // can never also carry AOSP roots or candidate nodes; only a direct factory may hand over a plan and
         // every other caller keeps the helper's default null.
         _directGblPlan = directGblPlan;
+        _directAospPreserved = directAospPreserved;
+
+        if (directAospPreserved
+            && (!_isDirect || directGblPlan is not null || _directAvbRoots.Count > 0 || _directAvbNodes.Count > 0))
+        {
+            throw new InvalidOperationException(
+                "An AOSP-preserving preparation is direct only and carries no GBL plan, signed roots or metadata nodes.");
+        }
 
         if (directGblPlan is not null)
         {
@@ -569,17 +578,28 @@ internal sealed partial class InternalInstallPreparationContext : IDisposable
             // wrapper, the child and the current-XBL capacity are completed from the actual builds later, not
             // here. A null result is the old AOSP eligibility only, and that path keeps its exact signed-root
             // preparation below.
-            gblInputs = await PrepareDirectGblInputsAsync(
-                deviceCheck.CurrentSlot,
-                deviceCheck.FastbootLockState,
-                sourceSlots,
-                backupFacts,
-                evidenceDirectory,
-                claims,
-                cancellationToken).ConfigureAwait(false);
+            bool aospPreserved = UsesPreservedAospChain(profile.Model);
+            if (aospPreserved)
+            {
+                // Boot-only route: the original AVB metadata stays untouched, so neither the GBL gate nor the
+                // AOSP re-sign roots apply; only the root and boot chain keys are authenticated.
+                await RequireDirectPreservedAospChainAsync(sourceSlots, backupFacts, cancellationToken)
+                    .ConfigureAwait(false);
+            }
+            else
+            {
+                gblInputs = await PrepareDirectGblInputsAsync(
+                    deviceCheck.CurrentSlot,
+                    deviceCheck.FastbootLockState,
+                    sourceSlots,
+                    backupFacts,
+                    evidenceDirectory,
+                    claims,
+                    cancellationToken).ConfigureAwait(false);
+            }
 
             IReadOnlyDictionary<string, EdlRawResignedAvbNode> avbRoots;
-            if (gblInputs is null)
+            if (gblInputs is null && !aospPreserved)
             {
                 avbRoots = await PrepareDirectAvbRootsAsync(
                     deviceCheck.CurrentSlot,
@@ -628,7 +648,7 @@ internal sealed partial class InternalInstallPreparationContext : IDisposable
             // build. The plan itself is completed from the actual built boots afterwards.
             IReadOnlyList<DirectAvbMetadataNode> avbNodes;
 
-            if (gblInputs is null)
+            if (gblInputs is null && !aospPreserved)
             {
                 avbNodes = await PrepareDirectAvbNodesAsync(
                     avbRoots,
@@ -805,7 +825,8 @@ internal sealed partial class InternalInstallPreparationContext : IDisposable
                 requiredExecutionBytes,
                 avbRoots,
                 avbNodes,
-                gblPlan);
+                gblPlan,
+                aospPreserved);
 
             // The context owns the plan's wrappers and its staged input files from here on, so the local
             // hand-off is cleared before the remaining factory work can fail and dispose something the
@@ -4061,7 +4082,7 @@ internal sealed partial class InternalInstallPreparationContext : IDisposable
         }
         else
         {
-            json.WriteString("bootTrustMode", nameof(InternalInstallBootTrustMode.AospResigned));
+            json.WriteString("bootTrustMode", DirectBootTrustMode.ToString());
 
             json.WriteStartArray("slots");
             foreach (string slot in SlotOrder)

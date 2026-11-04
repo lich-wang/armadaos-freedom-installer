@@ -481,7 +481,7 @@ public partial class MainWindow
         var selectedIdentity = storedAndroid.Identity;
 
         // 只开放识别与只读检查的型号（TB710FU）：安装备份属于安装路线，在进入 9008 之前停下。
-        if (DeviceModelRoutes.IsWriteRoutePending(selectedIdentity.Model))
+        if (DeviceModelRoutes.IsInstallRoutePending(selectedIdentity.Model))
         {
             SetInternalInstallBackupStatus(
                 M("Dynamic.Model.RoutePending", Placeholder(selectedIdentity.Model)));
