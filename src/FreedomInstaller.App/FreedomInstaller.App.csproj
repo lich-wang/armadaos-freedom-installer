@@ -15,11 +15,11 @@
     <Description>免费软件，谨防被骗。ArmadaOS Freedom 双系统安装助手。</Description>
     <Copyright>Installer by danyi (mydanyi). Third-party components retain their original licenses.</Copyright>
     <!-- 安装助手自身版本号（非 ArmadaOS 系统版本）。AssemblyVersion/FileVersion 固定四段；
-         IncludeSourceRevisionInInformationalVersion=false 使 InformationalVersion 保持 0.7.6，不追加 git 提交号。 -->
-    <Version>0.7.6</Version>
-    <InformationalVersion>0.7.6</InformationalVersion>
-    <AssemblyVersion>0.7.6.0</AssemblyVersion>
-    <FileVersion>0.7.6.0</FileVersion>
+         IncludeSourceRevisionInInformationalVersion=false 使 InformationalVersion 保持 0.7.14，不追加 git 提交号。 -->
+    <Version>0.7.14</Version>
+    <InformationalVersion>0.7.14</InformationalVersion>
+    <AssemblyVersion>0.7.14.0</AssemblyVersion>
+    <FileVersion>0.7.14.0</FileVersion>
     <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
   </PropertyGroup>
 

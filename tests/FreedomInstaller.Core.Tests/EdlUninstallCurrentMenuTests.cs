@@ -215,7 +215,148 @@ public sealed class EdlUninstallCurrentMenuTests
         return await UninstallWorkflow.RunAsync(body, h.Backend);
     }
 
-    internal async Task<Harness> PrepareAsync()
+
+    [Theory]
+    [InlineData(false, "a", false)]
+    [InlineData(true, "a", false)]
+    [InlineData(false, "b", false)]
+    [InlineData(true, "b", false)]
+    [InlineData(true, "b", true)]
+    public async Task QualcommUninstall_CompletesBothBootChoices(bool restoreStock, string currentSlot, bool failStockReadback)
+    {
+        using Harness h = await PrepareAsync(qualcomm: true, currentSlot, restoreStock);
+        BootMaintenancePrepared? expected = null;
+        if (restoreStock)
+        {
+            var history = await BootMaintenanceBackend.ReadHistoricalIdentityAsync(h.Current.DirectoryPath);
+            using var stock = await BootMaintenanceBackend.CreatePreparedFromEdlAsync(
+                MaintenanceMode.RestoreStock, history, h.Client, h.Current,
+                new BootMaintenanceSources(OriginalBackupDirectory: h.Original.DirectoryPath),
+                h.Runner, h.CaseDirectory);
+            expected = stock.Prepared;
+        }
+
+        UninstallResult result = await RunWorkflowAsync(h);
+        Assert.True(result.Success, result.Error);
+        Assert.Equal(UninstallStage.AwaitingFactoryReset, result.Stage);
+        Assert.True(result.DataMayBeErased);
+        Assert.Equal(0, h.Ib.ResetCount);
+
+        if (restoreStock)
+        {
+            int writesBeforeRestore = h.Ib.Writes.Count;
+            if (failStockReadback)
+            {
+                var first = expected!.Regions.First(r => r.WillWrite);
+                h.Ib.InjectReadbackFailureOnce(first.Lun, first.StartSector, first.SectorCount);
+            }
+            BootMaintenanceResult restored = await UninstallStockBootRestoration.RestoreAfterUninstallAsync(
+                result, expected!, h.Client, h.Original.DirectoryPath, h.Runner, h.CaseDirectory);
+            if (failStockReadback)
+            {
+                Assert.Equal(BootMaintenanceOutcome.UnknownWriteOutcome, restored.Outcome);
+                Assert.Equal(InternalInstallWriteState.Unknown, restored.WriteState);
+                Assert.Equal(writesBeforeRestore + 1, h.Ib.Writes.Count);
+                Assert.Equal(0, h.Ib.ResetCount);
+                return;
+            }
+            Assert.Equal(BootMaintenanceOutcome.Completed, restored.Outcome);
+            Assert.Equal(InternalInstallWriteState.AllVerified, restored.WriteState);
+            Assert.Null(restored.Error);
+            foreach (string role in new[] { "boot_a", "boot_b", "recovery_a", "recovery_b",
+                         "vbmeta_system_a", "vbmeta_system_b", "vbmeta_a", "vbmeta_b" })
+            {
+                var region = h.Current.Files[role];
+                string actual = await ReadStoredShaAsync(h, region.Lun, region.StartSector, region.SectorCount);
+                Assert.Equal(ShaFile(Path.Combine(h.Original.DirectoryPath, role + ".bin")),
+                    actual, StringComparer.OrdinalIgnoreCase);
+            }
+        }
+        else
+        {
+            await h.Client.ResetAsync();
+            foreach (var slot in h.Menu.Slots)
+            {
+                var region = h.Current.Files["boot_" + slot.Slot];
+                Assert.Equal(slot.Candidate!.Sha256,
+                    await ReadStoredShaAsync(h, region.Lun, region.StartSector, region.SectorCount),
+                    StringComparer.OrdinalIgnoreCase);
+            }
+        }
+
+        Assert.Equal(1, h.Ib.ResetCount);
+        var post = await ReadPostTableAsync(h, afterReset: true);
+        AssertPostTable(h, post);
+        Assert.Equal(h.MarkerStartSha,
+            await ReadStoredShaAsync(h, 0, h.BackupSpec.StartSector, 1), StringComparer.OrdinalIgnoreCase);
+        Assert.Equal(h.MarkerEndSha,
+            await ReadStoredShaAsync(h, 0, h.BackupSpec.StartSector + h.BackupSpec.SectorCount - 1, 1),
+            StringComparer.OrdinalIgnoreCase);
+
+        var misc = h.Current.Files["misc"];
+        string miscPath = Path.Combine(h.CaseDirectory, "final-misc.bin");
+        await h.Device.MaterializeReadAsync(
+            new IB001Read(misc.Lun, misc.StartSector, misc.SectorCount, miscPath), CancellationToken.None);
+        byte[] finalMisc = await File.ReadAllBytesAsync(miscPath);
+        Assert.Equal("boot-recovery", System.Text.Encoding.ASCII.GetString(finalMisc, 0, 32).TrimEnd('\0'));
+        Assert.Contains("--wipe_data", System.Text.Encoding.ASCII.GetString(finalMisc, 64, 1024));
+        byte[] beforeMisc = await File.ReadAllBytesAsync(misc.FilePath);
+        Assert.Equal(beforeMisc.Skip(2048), finalMisc.Skip(2048));
+
+        var protectedRanges = h.Current.Tables
+            .SelectMany(t => t.Value.Partitions.Select(p => (Lun: t.Key, Partition: p)))
+            .Where(t => t.Partition.Name is "abl_a" or "abl_b" or "efisp" or "metadata" or "ARMADA_BACKUP")
+            .Concat(post.Where(p => p.Name == "userdata").Select(p => (Lun: 0, Partition: p)));
+        foreach (var write in h.Ib.Writes)
+        foreach (var item in protectedRanges)
+        {
+            var p = item.Partition;
+            Assert.False(write.Lun == item.Lun && write.StartSector < p.StartSector + p.SectorCount
+                && p.StartSector < write.StartSector + write.SectorCount,
+                "write overlapped " + p.Name);
+        }
+    }
+
+    [Fact]
+    public async Task QualcommSlotChangeBeforeUninstall_IsRefused()
+    {
+        using Harness h = await PrepareAsync(qualcomm: true);
+        OverlayQualcommSlotGpt(h.Device, h.CaseDirectory, activeA: false);
+        UninstallResult result = await RunWorkflowAsync(h);
+        Assert.False(result.Success);
+        Assert.Empty(h.Ib.Writes);
+        Assert.Equal(0, h.Ib.ResetCount);
+    }
+
+    [Fact]
+    public async Task QualcommSlotDoesNotComeFromVirtualAbSource()
+    {
+        using Harness h = await PrepareAsync(qualcomm: true);
+        Assert.Equal("a", (await CurrentBootSlot.ReadAsync(h.Current)).CurrentSlot);
+        var misc = h.Current.Files["misc"];
+        var vab = await BootVirtualAbControl.ReadAsync(new VerifiedEdlFile(misc.FilePath, misc.Length, misc.Sha256));
+        Assert.Equal(1, vab.SourceSlot);
+        Assert.Equal(BootVirtualAbState.Completed, vab.State);
+    }
+
+    private static IReadOnlyDictionary<string, VerifiedEdlFile> CoherentRecoverySources(DirectAvbSourceTestFixture fixture)
+    {
+        var result = fixture.Sources.ToDictionary(p => p.Key, p => p.Value, StringComparer.Ordinal);
+        foreach (var item in new[] { (Slot: "a", Owner: fixture.A), (Slot: "b", Owner: fixture.B) })
+        {
+            byte[] payload = Enumerable.Repeat((byte)0x21, 32768).ToArray();
+            byte[] salt = Enumerable.Repeat((byte)0x9d, 16).ToArray();
+            byte[] descriptor = BootMaintenanceStockChainTests.RecoveryHashDescriptor(
+                payload.Length, salt, SHA256.HashData(salt.Concat(payload).ToArray()), "sha256");
+            byte[] bytes = BootMaintenanceStockChainTests.BuildRecoveryPartition(item.Owner, descriptor, null);
+            File.WriteAllBytes(item.Owner.RecoveryPath, bytes);
+            result["recovery_" + item.Slot] = new VerifiedEdlFile(
+                item.Owner.RecoveryPath, bytes.Length, ShaFile(item.Owner.RecoveryPath));
+        }
+        return result;
+    }
+
+    internal async Task<Harness> PrepareAsync(bool qualcomm = false, string currentSlot = "a", bool stockOnly = false)
     {
         string caseDirectory = _toolchain.NewCaseDirectory(
             nameof(EdlUninstallCurrentMenuTests) + "-" + Guid.NewGuid().ToString("N"));
@@ -226,7 +367,7 @@ public sealed class EdlUninstallCurrentMenuTests
 
         try
         {
-            DirectAvbSourceTestFixture avb = new(DirectAvbSourceKind.Aosp);
+            DirectAvbSourceTestFixture avb = new(DirectAvbSourceKind.Oem);
             owned.Add(avb);
 
             EdlRawBootBuilderTests.Workspace aux = new();
@@ -252,11 +393,19 @@ public sealed class EdlUninstallCurrentMenuTests
 
             // The synthetic device is shared fixture state for the case: never disposed here and never
             // added to the owned list.
-            IB001SyntheticDevice device = IB001SyntheticDevice.CreateDirect(caseDirectory, sources, avb.Sources);
+            IB001SyntheticDevice device = IB001SyntheticDevice.CreateDirect(caseDirectory, sources, CoherentRecoverySources(avb));
+            if (qualcomm)
+            {
+                OverlayQualcommSlotGpt(device, caseDirectory, activeA: currentSlot == "a");
+            }
 
             // A valid misc overlay exists BEFORE the historical capture, so both captures see one.
             (int miscLun, long miscStart, long miscCount, _) = device.Expectation("misc");
             byte[] miscPage = BuildValidMiscBytes();
+            if (qualcomm)
+            {
+                Array.Clear(miscPage, 2048, 32);
+            }
             Assert.Equal(miscCount * SectorBytes, miscPage.Length);
             string miscPath = Path.Combine(caseDirectory, "misc-overlay.bin");
             File.WriteAllBytes(miscPath, miscPage);
@@ -268,7 +417,7 @@ public sealed class EdlUninstallCurrentMenuTests
             };
 
             // ---- real public device check #1 (verified unlocked, slot a) feeds the historical client ----
-            InternalDeviceCheckResult check1 = await RunDeviceCheckAsync();
+            InternalDeviceCheckResult check1 = await RunDeviceCheckAsync(currentSlot);
             EdlEntryResult historicalEntry = new(
                 check1.Android!, E003EdlTestData.Endpoint(), E003EdlTestData.BusSerialHex);
 
@@ -372,6 +521,14 @@ public sealed class EdlUninstallCurrentMenuTests
             (int bootBLun, long bootBStart, long bootBCount, _) = device.Expectation("boot_b");
             device.AddWriteOverlay(bootALun, bootAStart, bootACount, _fx.NormalBuilt.CandidateBoot.Path);
             device.AddWriteOverlay(bootBLun, bootBStart, bootBCount, _fx.NormalBuilt.CandidateBoot.Path);
+            var currentAvb = new DirectAvbSourceTestFixture(DirectAvbSourceKind.Aosp);
+            owned.Add(currentAvb);
+            foreach (var companion in CoherentRecoverySources(currentAvb))
+            {
+                var extent = device.Expectation(companion.Key);
+                device.AddWriteOverlay(extent.Lun, extent.Start, extent.Count, companion.Value.Path);
+            }
+
 
             device.AddWriteOverlay(0, 0, 64, currentPrimaryPath);
             device.AddWriteOverlay(0, device.TotalSectors(0) - 64, 64, currentBackupPath);
@@ -393,9 +550,9 @@ public sealed class EdlUninstallCurrentMenuTests
             Assert.NotEqual(markerStartSha, markerEndSha);
 
             // ---- real public device check #2 (verified unlocked, slot a) feeds the current client ----
-            InternalDeviceCheckResult check2 = await RunDeviceCheckAsync();
+            InternalDeviceCheckResult check2 = await RunDeviceCheckAsync(currentSlot);
             EdlEntryResult currentEntry = new(
-                check2.Android!, E003EdlTestData.Endpoint(), E003EdlTestData.BusSerialHex);
+                (stockOnly ? check2.Android! with { Identity = check2.Android.Identity with { BootloaderState = BootloaderState.Unknown } } : check2.Android!), E003EdlTestData.Endpoint(), E003EdlTestData.BusSerialHex);
 
             // ---- composite runner: python+gpt goes to the EB tail wrapper, everything else to IB001 ----
             var ib = new IB001FakeEdlRunner(device, enableWrites: true);
@@ -414,29 +571,46 @@ public sealed class EdlUninstallCurrentMenuTests
             owned.Add(current);
 
             EdlCapturedRegion miscRegion = current.Files["misc"];
-            BootSlotControlFacts slotFacts = await BootSlotControl.ReadAsync(new VerifiedEdlFile(
-                miscRegion.FilePath, miscRegion.Length, miscRegion.Sha256));
-
-            CurrentBootMenuPlan menu = await CurrentBootMenuPlanner.PrepareAndroidDefaultAsync(
-                current, slotFacts.CurrentSlot, check2.Android.Identity.BootloaderState,
-                _fx.Tools, _fx.Runner, Path.Combine(caseDirectory, "menu"), CancellationToken.None);
-            owned.Add(menu);
+            CurrentBootSlotFacts slotFacts = await CurrentBootSlot.ReadAsync(current);
 
             UninstallOriginalGptBackup original = await InternalInstallBackup.OpenOriginalGptForUninstallAsync(
                 currentClient, historicalDirectory);
             owned.Add(original);
-
-            EdlUninstallBackend backend = await EdlUninstallBackend.CreatePreparedAsync(
-                currentClient, _toolchain.Toolchain, currentClient.Binding,
-                UninstallGptAssets.FromVerifiedBackup(original),
-                current, menu, slotFacts.CurrentSlot,
-                Path.Combine(caseDirectory, "evidence"), composite,
-                progress: null, token: CancellationToken.None);
+            CurrentBootMenuPlan? menu = null;
+            EdlUninstallBackend backend;
+            if (stockOnly)
+            {
+                Assert.Equal(BootloaderState.Unknown, current.Binding.AndroidIdentity.Identity.BootloaderState);
+                var history = await BootMaintenanceBackend.ReadHistoricalIdentityAsync(current.DirectoryPath);
+                using var stock = await BootMaintenanceBackend.CreatePreparedFromEdlAsync(
+                    MaintenanceMode.RestoreStock, history, currentClient, current,
+                    new BootMaintenanceSources(OriginalBackupDirectory: original.DirectoryPath),
+                    composite, caseDirectory);
+                backend = await EdlUninstallBackend.CreatePreparedForStockRestoreAsync(
+                    currentClient, _toolchain.Toolchain, currentClient.Binding,
+                    UninstallGptAssets.FromVerifiedBackup(original), current, stock.Prepared,
+                    Path.Combine(caseDirectory, "evidence"), composite);
+                Assert.Equal(0, backend.MenuWriteCount);
+            }
+            else
+            {
+                menu = await CurrentBootMenuPlanner.PrepareAndroidDefaultAsync(
+                    current, slotFacts.CurrentSlot, check2.Android.Identity.BootloaderState,
+                    _fx.Tools, _fx.Runner, Path.Combine(caseDirectory, "menu"), CancellationToken.None);
+                owned.Add(menu);
+                backend = await EdlUninstallBackend.CreatePreparedAsync(
+                    currentClient, _toolchain.Toolchain, currentClient.Binding,
+                    UninstallGptAssets.FromVerifiedBackup(original), current, menu, slotFacts.CurrentSlot,
+                    Path.Combine(caseDirectory, "evidence"), composite);
+            }
             owned.Add(backend);
 
             return new Harness(
-                device, ib, currentClient, current, original, menu, backend,
-                caseDirectory, originalTable, backupSpec, markerStartSha, markerEndSha, owned);
+                device, ib, currentClient, current, original, menu!, backend,
+                caseDirectory, originalTable, backupSpec, markerStartSha, markerEndSha, owned)
+            {
+                Runner = composite,
+            };
         }
         catch
         {
@@ -449,12 +623,12 @@ public sealed class EdlUninstallCurrentMenuTests
         }
     }
 
-    private static async Task<InternalDeviceCheckResult> RunDeviceCheckAsync()
+    private static async Task<InternalDeviceCheckResult> RunDeviceCheckAsync(string currentSlot)
     {
         var checkRunner = new DeviceCheckRunner(CheckSerial, new DeviceCheckClock())
         {
-            FastbootCurrentSlot = "a",
-            ReturnSlotSuffix = "_a",
+            FastbootCurrentSlot = currentSlot,
+            ReturnSlotSuffix = "_" + currentSlot,
             BootImmediatelyCompleteOnReturn = true,
             UnlockedReportValue = "yes",
         };
@@ -516,6 +690,38 @@ public sealed class EdlUninstallCurrentMenuTests
         return window;
     }
 
+    internal static void OverlayQualcommSlotGpt(IB001SyntheticDevice device,string directory,bool activeA)
+    {
+        long total=device.TotalSectors(4);
+        byte[] primary=device.PayloadFor(4,0,64)!;
+        byte[] backup=device.PayloadFor(4,total-64,64)!;
+        GptTable table=OriginalGptImporter.Parse(primary,backup,4096,total*4096);
+        ulong active=0x0077000000000000UL;
+        ulong inactive=0x00F3000000000000UL;
+        ulong bootAAttr=activeA?active:inactive;
+        ulong bootBAttr=activeA?inactive:active;
+        GptPartitionSpec[] specs=table.Partitions.Select(p=>new GptPartitionSpec(p.Number,p.Name,p.TypeGuid,p.PartUuid,p.StartSector,p.SectorCount,p.Name=="boot_a"?bootAAttr:(p.Name=="boot_b"?bootBAttr:p.Attributes))).ToArray();
+        GptImage image=new GptImage(4096,(long)total*4096,table.DiskGuid,table.FirstUsableSector,table.LastUsableSector,specs);
+        byte[] primaryFragment=image.BuildPrimaryFragment();
+        byte[] backupFragment=image.BuildBackupFragment();
+        byte[] primaryWindow=BuildWindow(primaryFragment,false);
+        byte[] backupWindow=BuildWindow(backupFragment,true);
+        string primaryPath=Path.Combine(directory,Guid.NewGuid().ToString("N")+".bin");
+        string backupPath=Path.Combine(directory,Guid.NewGuid().ToString("N")+".bin");
+        File.WriteAllBytes(primaryPath,primaryWindow);
+        File.WriteAllBytes(backupPath,backupWindow);
+        device.AddWriteOverlay(4,0,64,primaryPath);
+        device.AddWriteOverlay(4,total-64,64,backupPath);
+    }
+
+    private static async Task<string> ReadStoredShaAsync(Harness h, int lun, long start, long count)
+    {
+        // Reset closes the EDL session; inspect the synthetic storage without reopening it.
+        string path = Path.Combine(h.CaseDirectory, $"stored-{lun}-{start}-{count}.bin");
+        await h.Device.MaterializeReadAsync(new IB001Read(lun, start, count, path), CancellationToken.None);
+        return ShaFile(path);
+    }
+
     private static async Task<string> ReadSectorShaAsync(Harness h, int lun, long start, long count)
     {
         string path = Path.Combine(h.CaseDirectory, $"post-read-{lun}-{start}-{count}.bin");
@@ -523,17 +729,25 @@ public sealed class EdlUninstallCurrentMenuTests
         return evidence.Sha256;
     }
 
-    private static async Task<IReadOnlyList<GptPartition>> ReadPostTableAsync(Harness h)
+    private static async Task<IReadOnlyList<GptPartition>> ReadPostTableAsync(Harness h, bool afterReset = false)
     {
         long total = h.Device.TotalSectors(0);
         string primaryPath = Path.Combine(h.CaseDirectory, "post-primary.bin");
         string backupPath = Path.Combine(h.CaseDirectory, "post-backup.bin");
-        EdlReadEvidence primary = await h.Client.ReadAsync(0, 0, 64, primaryPath);
-        EdlReadEvidence backup = await h.Client.ReadAsync(0, total - 64, 64, backupPath);
+        if (afterReset)
+        {
+            await h.Device.MaterializeReadAsync(new IB001Read(0, 0, 64, primaryPath), CancellationToken.None);
+            await h.Device.MaterializeReadAsync(new IB001Read(0, total - 64, 64, backupPath), CancellationToken.None);
+        }
+        else
+        {
+            await h.Client.ReadAsync(0, 0, 64, primaryPath);
+            await h.Client.ReadAsync(0, total - 64, 64, backupPath);
+        }
 
         GptTable post = OriginalGptImporter.Parse(
-            File.ReadAllBytes(primary.FilePath),
-            File.ReadAllBytes(backup.FilePath),
+            File.ReadAllBytes(primaryPath),
+            File.ReadAllBytes(backupPath),
             h.OriginalTable.SectorSize,
             h.OriginalTable.DiskBytes);
         return post.Partitions;
@@ -668,6 +882,7 @@ public sealed class EdlUninstallCurrentMenuTests
         }
 
         internal IB001SyntheticDevice Device { get; }
+        internal ICommandRunner Runner { get; set; } = null!;
         internal IB001FakeEdlRunner Ib { get; }
         internal EdlClient Client { get; }
         internal InternalBackupSet Current { get; }

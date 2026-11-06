@@ -340,10 +340,11 @@ public sealed partial class BootMaintenanceBackend : IDisposable
             await ReadbackEveryCurrentRegionAsync(
                 client, ownedCurrent, evidenceDirectory, progress, cancellationToken).ConfigureAwait(false);
 
-            // The freshly verified misc capture is the only slot authority here: it was just re-read from
-            // the device and hashed back to the held capture, so its GPT control bytes are actual facts.
-            BootSlotControlFacts miscFacts = await BootSlotControl
-                .ReadAsync(RegionClaim(ownedCurrent.Files, "misc", "the current rollback capture"), cancellationToken)
+            // The freshly verified capture was just re-read from the device and hashed back to the
+            // held copy. CurrentBootSlot verifies the misc control block and can resolve an all-zero
+            // control on a Qualcomm Y700 from the GPT slot flags.
+            CurrentBootSlotFacts miscFacts = await CurrentBootSlot
+                .ReadAsync(ownedCurrent, cancellationToken)
                 .ConfigureAwait(false);
 
             // Same fresh capture, modern virtual A/B message: the OTA must be factually Completed

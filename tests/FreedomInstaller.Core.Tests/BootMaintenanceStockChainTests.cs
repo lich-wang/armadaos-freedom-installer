@@ -438,7 +438,7 @@ public sealed class BootMaintenanceStockChainTests
         }
     }
 
-    private static byte[] BuildRecoveryPartition(
+    internal static byte[] BuildRecoveryPartition(
         AvbFixture owner,
         byte[] recoveryHashDescriptor,
         byte[]? extraHashDescriptor)
@@ -468,7 +468,7 @@ public sealed class BootMaintenanceStockChainTests
         return recovery;
     }
 
-    private static byte[] RecoveryHashDescriptor(long imageSize, byte[] salt, byte[] digest, string algorithm)
+    internal static byte[] RecoveryHashDescriptor(long imageSize, byte[] salt, byte[] digest, string algorithm)
     {
         int exact = 132 + 8 + salt.Length + digest.Length;
         int total = (exact + 7) & ~7;

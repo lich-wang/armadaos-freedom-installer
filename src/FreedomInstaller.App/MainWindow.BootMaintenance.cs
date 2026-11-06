@@ -213,7 +213,7 @@ public partial class MainWindow
                         fresh,
                         chosen,
                         runner,
-                        parent,
+                        TemporaryWorkRoot,
                         preparationProgress,
                         token)
                     : BootMaintenanceBackend.CreatePreparedAsync(
@@ -223,7 +223,7 @@ public partial class MainWindow
                         fresh,
                         chosen,
                         runner,
-                        parent,
+                        TemporaryWorkRoot,
                         preparationProgress,
                         token);
 
@@ -269,7 +269,7 @@ public partial class MainWindow
                         SetText(BootMaintenancePrepareStatusText,
                             M("Dynamic.BootMaintenance.Repair.ImportingPackage"));
                         SetInternalInstallBackupStatus(M("Dynamic.BootMaintenance.Repair.ImportingPackage"));
-                        var imported = await PackageImporter.ImportAsync(packagePath, fresh.Model, target, parent, token);
+                        var imported = await PackageImporter.ImportAsync(packagePath, fresh.Model, target, TemporaryWorkRoot, token);
                         // 导入结果先入字段再校验：无论后续成败，清理路径始终拥有它。
                         _bootMaintenanceRepairPackage = imported;
 

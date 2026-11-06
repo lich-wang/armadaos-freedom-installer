@@ -213,6 +213,24 @@ public sealed partial class EdlUninstallBackend : IUserdataUninstallBackend, IDi
             progress, token);
     }
 
+    public static Task<EdlUninstallBackend> CreatePreparedForStockRestoreAsync(
+        EdlClient client, EdlToolchain tools, EdlEntryResult binding,
+        UninstallGptAssets assets, InternalBackupSet currentBackup,
+        BootMaintenancePrepared stockRestore, string workRoot, ICommandRunner runner,
+        IProgress<EdlUninstallProgress>? progress = null, CancellationToken token = default)
+    {
+        ArgumentNullException.ThrowIfNull(currentBackup);
+        ArgumentNullException.ThrowIfNull(stockRestore);
+        if (stockRestore.Mode != MaintenanceMode.RestoreStock
+            || stockRestore.Model != currentBackup.Model
+            || stockRestore.AndroidSerial != binding.AndroidIdentity.Identity.Serial
+            || !string.Equals(stockRestore.SocSerial, binding.AndroidIdentity.SocSerial, StringComparison.OrdinalIgnoreCase)
+            || !SamePath(stockRestore.BackupDirectory, currentBackup.DirectoryPath))
+            throw new InvalidOperationException("The stock restoration plan does not match the current uninstall device and backup.");
+        return CreatePreparedCoreAsync(client, tools, binding, assets, workRoot, runner,
+            currentBackup, null, stockRestore.CurrentSlot, progress, token, stockRestore);
+    }
+
     private static async Task<EdlUninstallBackend> CreatePreparedCoreAsync(
         EdlClient client,
         EdlToolchain tools,
@@ -224,7 +242,8 @@ public sealed partial class EdlUninstallBackend : IUserdataUninstallBackend, IDi
         CurrentBootMenuPlan? menuPlan,
         string? actualCurrentSlot,
         IProgress<EdlUninstallProgress>? progress,
-        CancellationToken token)
+        CancellationToken token,
+        BootMaintenancePrepared? stockRestore = null)
     {
         if (client is null)
         {
@@ -259,10 +278,10 @@ public sealed partial class EdlUninstallBackend : IUserdataUninstallBackend, IDi
             || actualCurrentSlot is not null;
         if (standard)
         {
-            if (currentBackup is null || menuPlan is null || actualCurrentSlot is null)
+            if (currentBackup is null || actualCurrentSlot is null || (menuPlan is null) == (stockRestore is null))
             {
                 throw new ArgumentException(
-                    "The standard uninstall route requires the current backup, the menu plan and the actual slot together.");
+                    "The standard uninstall route requires a current backup, actual slot and exactly one menu or stock restoration plan.");
             }
 
             // Typed provenance is mandatory on the standard route before any device
@@ -387,12 +406,12 @@ public sealed partial class EdlUninstallBackend : IUserdataUninstallBackend, IDi
             // The standard fresh/menu route prepares the durable current-menu evidence
             // before any GPT processing; the legacy route performs no current-menu work.
             CurrentMenuEvidence? currentMenu = null;
-            if (currentBackup is not null && menuPlan is not null)
+            if (currentBackup is not null)
             {
                 SafeReportStage(progress, Stages.PreflightMenu);
                 currentMenu = await PrepareCurrentMenuAsync(
                     client, binding, assets, currentBackup, menuPlan, actualCurrentSlot!,
-                    capture, backupDirectory, locks, pinned, token)
+                    capture, backupDirectory, locks, pinned, token, stockRestore)
                     .ConfigureAwait(false);
             }
 
@@ -830,6 +849,14 @@ public sealed partial class EdlUninstallBackend : IUserdataUninstallBackend, IDi
             SafeStage(Stages.PreflightMenu);
 
             var preflightRoles = new List<string>();
+            // Qualcomm active-slot flags live in the boot LUN GPT. Re-read both copies before
+            // any boot or partition write, alongside the previously checked misc/LUN0 capture.
+            foreach (int bootLun in new[] { "boot_a", "boot_b" }
+                .Select(role => _currentMenu.SourceRegions[role].Lun).Distinct())
+            {
+                preflightRoles.Add("gpt_lun" + bootLun + "_primary");
+                preflightRoles.Add("gpt_lun" + bootLun + "_backup");
+            }
             foreach (string bootRole in new[] { "boot_a", "boot_b" })
             {
                 preflightRoles.Add(bootRole);

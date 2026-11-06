@@ -203,6 +203,10 @@ public partial class MainWindow
         {
             Resources[pair.Key] = pair.Value;
         }
+
+        Resources["Static.Title"] = T(
+            "Static.Title",
+            typeof(MainWindow).Assembly.GetName().Version?.ToString(3) ?? string.Empty);
     }
 
     private void UpdateLanguageToggle()

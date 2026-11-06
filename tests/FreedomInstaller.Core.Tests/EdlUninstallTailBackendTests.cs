@@ -41,7 +41,7 @@ public sealed class EdlUninstallTailBackendTests : IClassFixture<EdlClientToolch
         Assert.Equal(TailBackupConstants.BoardBackupPartUuid, backend.Inputs.Record.BoardBackupPartUuid, ignoreCase: true);
         Assert.Equal(TailBackupConstants.BackupStartSector, backend.Inputs.Plan.UserdataEndSectorExclusive);
         Assert.Equal(
-            EbFixture.RestoredAndroidBytes - TailBackupConstants.TwoGiBBytes,
+            480765116416L,
             backend.Inputs.Plan.RestoredAndroidBytes);
         Assert.Equal(new long[] { 4L, 5L }, backend.Inputs.Plan.RemovedPartitionNumbers);
 
@@ -215,13 +215,16 @@ internal static class TailBackupConstants
     public const long TwoGiBSectors = (2L * 1024 * 1024 * 1024) / EbFixture.SectorSize;
     public const long TwoGiBBytes = TwoGiBSectors * EbFixture.SectorSize;
 
+    public const long TailPaddingSectors =
+        (EbFixture.UserdataStart + EbFixture.OriginalUserdataCount) % (1048576 / EbFixture.SectorSize);
+
     public const long BackupStartSector =
-        EbFixture.UserdataStart + EbFixture.OriginalUserdataCount - TwoGiBSectors;
+        EbFixture.UserdataStart + EbFixture.OriginalUserdataCount - TwoGiBSectors - TailPaddingSectors;
 
     public const ulong BoardBackupAttributes = 1UL << 60;
 
     public const long ExpectedRestoredBytes =
-        (EbFixture.OriginalUserdataCount - TwoGiBSectors) * EbFixture.SectorSize;
+        (EbFixture.OriginalUserdataCount - TwoGiBSectors - TailPaddingSectors) * EbFixture.SectorSize;
 
     public static GptImage BuildCurrentImage() => new(
         EbFixture.SectorSize,
@@ -235,7 +238,7 @@ internal static class TailBackupConstants
             new GptPartitionSpec(2, "misc", EbFixture.ProinfoType, EbFixture.MiscUuid, EbFixture.OriginalMiscStart, EbFixture.MiscCount, 0UL),
             new GptPartitionSpec(3, "userdata", EbFixture.UserdataType, EbFixture.UserdataUuid, EbFixture.UserdataStart, EbFixture.CurrentUserdataCount, 0UL),
             new GptPartitionSpec(4, "ARMADA_BOOT", EbFixture.LinuxType, EbFixture.BootUuid, EbFixture.BootStart, EbFixture.BootCount, 0UL),
-            new GptPartitionSpec(5, "ARMADA_ROOT", EbFixture.LinuxType, EbFixture.RootUuid, EbFixture.RootStart, EbFixture.RootCount - TwoGiBSectors, 0UL),
+            new GptPartitionSpec(5, "ARMADA_ROOT", EbFixture.LinuxType, EbFixture.RootUuid, EbFixture.RootStart, EbFixture.RootCount - TwoGiBSectors - TailPaddingSectors, 0UL),
             new GptPartitionSpec(6, "ARMADA_BACKUP", EbFixture.LinuxType, BoardBackupPartUuid, BackupStartSector, TwoGiBSectors, BoardBackupAttributes),
         });
 
@@ -249,7 +252,7 @@ internal static class TailBackupConstants
         {
             new GptPartitionSpec(1, "proinfo", EbFixture.ProinfoType, EbFixture.ProinfoUuid, EbFixture.ProinfoStart, EbFixture.ProinfoCount, 0UL),
             new GptPartitionSpec(2, "misc", EbFixture.ProinfoType, EbFixture.MiscUuid, EbFixture.OriginalMiscStart, EbFixture.MiscCount, 0UL),
-            new GptPartitionSpec(3, "userdata", EbFixture.UserdataType, EbFixture.UserdataUuid, EbFixture.UserdataStart, EbFixture.OriginalUserdataCount - TwoGiBSectors, 0UL),
+            new GptPartitionSpec(3, "userdata", EbFixture.UserdataType, EbFixture.UserdataUuid, EbFixture.UserdataStart, EbFixture.OriginalUserdataCount - TwoGiBSectors - TailPaddingSectors, 0UL),
             new GptPartitionSpec(6, "ARMADA_BACKUP", EbFixture.LinuxType, BoardBackupPartUuid, BackupStartSector, TwoGiBSectors, BoardBackupAttributes),
         });
 }

@@ -957,7 +957,7 @@
                                      Tag="2"
                                      Checked="OnInternalInstallNavChecked">
                             <StackPanel>
-                                <TextBlock Text="03" FontSize="11" />
+                                <TextBlock x:Name="SharedWorkflowThirdStepNumber" Text="03" FontSize="11" />
                                 <TextBlock x:Name="SharedWorkflowThirdStepText" Text="{DynamicResource Static.InternalInstall.Nav.Capacity}" FontSize="14" FontWeight="SemiBold" />
                             </StackPanel>
                         </RadioButton>
@@ -968,7 +968,7 @@
                                      Tag="3"
                                      Checked="OnInternalInstallNavChecked">
                             <StackPanel>
-                                <TextBlock Text="04" FontSize="11" />
+                                <TextBlock x:Name="SharedWorkflowConfirmStepNumber" Text="04" FontSize="11" />
                                 <TextBlock x:Name="SharedWorkflowConfirmStepText" Text="{DynamicResource Static.InternalInstall.Nav.Confirm}" FontSize="14" FontWeight="SemiBold" />
                             </StackPanel>
                         </RadioButton>
@@ -2042,7 +2042,7 @@
                                            Text="{DynamicResource Dynamic.BootMaintenance.OriginalSource}"
                                            Style="{StaticResource FieldLabelText}"
                                            Margin="0,12,0,6" />
-                                <Grid>
+                                <Grid x:Name="BootMaintenanceEntryOriginalRow">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*" />
                                         <ColumnDefinition Width="Auto" />
@@ -2736,9 +2736,29 @@
                                                 Style="{StaticResource SecondaryButton}"
                                                 Margin="10,0,0,0" />
                                     </Grid>
-                                    <TextBlock Text="{DynamicResource Dynamic.BootMaintenance.FreshBackup}"
+                                    <TextBlock x:Name="BootMaintenanceFreshBackupHint"
+                                               Text="{DynamicResource Dynamic.BootMaintenance.FreshBackup}"
                                                Style="{StaticResource CaptionText}"
                                                Margin="0,6,0,0" />
+
+                                    <!-- 卸载专用：恢复原厂安卓引导（默认不勾选，其他模式隐藏）。 -->
+                                    <CheckBox x:Name="BootMaintenanceRestoreStockCheck"
+                                              Style="{StaticResource RiskCheckBox}"
+                                              Visibility="Collapsed"
+                                              Margin="0,10,0,0"
+                                              Checked="OnUserdataUninstallRestoreStockChanged"
+                                              Unchecked="OnUserdataUninstallRestoreStockChanged">
+                                        <TextBlock x:Name="BootMaintenanceRestoreStockText"
+                                                   TextWrapping="Wrap"
+                                                   FontSize="13"
+                                                   Text="{DynamicResource Dynamic.UserdataUninstall.RestoreStock.Label}" />
+                                    </CheckBox>
+                                    <TextBlock x:Name="BootMaintenanceRestoreStockHint"
+                                               Style="{StaticResource CaptionText}"
+                                               TextWrapping="Wrap"
+                                               Margin="0,4,0,0"
+                                               Visibility="Collapsed"
+                                               Text="{DynamicResource Dynamic.UserdataUninstall.RestoreStock.Hint}" />
 
                                     <!-- 修复模式专用：项目备份目录与系统安装包 -->
                                     <StackPanel x:Name="BootMaintenanceRepairSourcesRow"
@@ -2812,6 +2832,25 @@
                                       Margin="0,12,0,0">
                                 <StackPanel x:Name="BootMaintenanceRegionsHost" />
                             </Expander>
+
+                            <!-- 卸载专用：确认页上的恢复原厂引导复选框（与来源页共用同一状态）。 -->
+                            <CheckBox x:Name="BootMaintenanceConfirmRestoreStockCheck"
+                                      Style="{StaticResource RiskCheckBox}"
+                                      Visibility="Collapsed"
+                                      Margin="0,14,0,0"
+                                      Checked="OnUserdataUninstallRestoreStockChanged"
+                                      Unchecked="OnUserdataUninstallRestoreStockChanged">
+                                <TextBlock x:Name="BootMaintenanceConfirmRestoreStockText"
+                                           TextWrapping="Wrap"
+                                           FontSize="13"
+                                           Text="{DynamicResource Dynamic.UserdataUninstall.RestoreStock.Label}" />
+                            </CheckBox>
+                            <TextBlock x:Name="BootMaintenanceConfirmRestoreStockHint"
+                                       Style="{StaticResource CaptionText}"
+                                       TextWrapping="Wrap"
+                                       Margin="0,4,0,0"
+                                       Visibility="Collapsed"
+                                       Text="{DynamicResource Dynamic.UserdataUninstall.RestoreStock.Hint}" />
 
                             <CheckBox x:Name="BootMaintenanceRiskCheck"
                                       Style="{StaticResource RiskCheckBox}"

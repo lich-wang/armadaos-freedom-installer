@@ -372,13 +372,13 @@ internal sealed partial class InternalInstallPreparationContext
                 // The observed boot-control slot must agree with the requested slot. The virtual A/B merge
                 // policy is a separate shared gate owned elsewhere and is deliberately not inferred from the
                 // merge bits here; the later sealed TF planner requires that separate gate.
-                BootSlotControlFacts slotControl = await BootSlotControl
-                    .ReadAsync(Claim(facts.Files, "misc"), ct)
+                CurrentBootSlotFacts slotControl = await CurrentBootSlot
+                    .ReadAsync(backup, ct)
                     .ConfigureAwait(false);
                 if (!string.Equals(slotControl.CurrentSlot, currentSlot, StringComparison.Ordinal))
                 {
                     throw new InvalidOperationException(
-                        "tf-boot-authority-slot-mismatch: the verified misc capture reports slot '"
+                        "tf-boot-authority-slot-mismatch: the verified current capture reports slot '"
                         + slotControl.CurrentSlot + "', not the requested slot '" + currentSlot + "'.");
                 }
 

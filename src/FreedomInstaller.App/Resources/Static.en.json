@@ -249,7 +249,7 @@
   "Static.ThemeLabelLight": "Light",
   "Static.ThemeTooltipDark": "Dark theme is on. Click to switch to light.",
   "Static.ThemeTooltipLight": "Light theme is on. Click to switch to dark.",
-  "Static.Title": "ArmadaOS Freedom Installer 0.7.5",
+  "Static.Title": "ArmadaOS Freedom Installer {0}",
   "Static.ToolsStatusInitial": "No tools folder selected yet.",
   "Static.UninstallInputLead": "Select this device's original primary and backup GPT files, then check the storage reclaim plan. Uninstalling Linux preserves the existing boot setup.",
   "Static.UninstallInputTitle": "Inputs required for uninstall",

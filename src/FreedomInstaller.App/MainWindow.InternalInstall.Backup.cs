@@ -343,10 +343,18 @@ public partial class MainWindow
     }
 
     /// <summary>
-    /// 「开始备份」：真实只读备份的唯一入口。已有 9008 会话时严格复用同一客户端与工具链；
-    /// 没有会话时先加载并校验工具链、重新确认同一台平板，然后只自动进入一次 9008。
+    /// 「开始备份」事件包装：只等待同一份真实备份实现；卸载准备也直接等待该实现，绝不调用 async void。
     /// </summary>
     private async void OnBackupInternalInstall(object sender, RoutedEventArgs e)
+    {
+        await BackupInternalInstallCoreAsync();
+    }
+
+    /// <summary>
+    /// 真实只读备份的唯一实现（原「开始备份」正文）：已有 9008 会话时严格复用同一客户端与工具链；
+    /// 没有会话时先加载并校验工具链、重新确认同一台平板，然后只自动进入一次 9008。
+    /// </summary>
+    private async System.Threading.Tasks.Task BackupInternalInstallCoreAsync()
     {
         // 共享谓词：安装与维护都从这里发起（全新）备份；维护受保护状态拒绝。
         if (!_ready || _busy || _internalInstallOperationActive || !UsesSharedDevicePreparationPages)
@@ -437,6 +445,7 @@ public partial class MainWindow
             }
 
             // 即将开始全新备份：先作废旧准备（卸载优先，再维护）。
+            // 卸载准备本身调用本实现时已无自有准备对象，helper 自带的保护判定允许此处安全空转。
             if (IsModernUserdataUninstallMode)
             {
                 InvalidateModernUserdataUninstallPreparation();
@@ -559,8 +568,8 @@ public partial class MainWindow
                             return;
                         }
 
-                        // 暂存目录紧跟用户选择的父目录：绝不在系统临时目录或 C: 根部提前解包。
-                        var workRoot = Path.Combine(parentPath, ".armada-installer-tools");
+                        // 工具解包到本次工作目录，与用户选择的备份目录分离。
+                        var workRoot = Path.Combine(TemporaryWorkRoot, "tools");
                         var loaded = await EdlToolchain.LoadAsync(archive, workRoot, token);
                         pendingTools = loaded;
 
@@ -672,6 +681,18 @@ public partial class MainWindow
 
                         RenderInternalInstallBackupProgress(report);
                     });
+
+                    // 卸载模式的安卓备份路线：在实际 CreateAsync 之前，先只读校验用户所选原厂恢复备份；
+                    // 已-9008 路线在进入本方法前已做同样校验，此处仅补齐安卓路线。
+                    // 必须 using 持有校验对象，否则会泄露全部输入文件句柄；结果本身不需要保留。
+                    if (!useExisting && IsModernUserdataUninstallMode)
+                    {
+                        using var validation = await InternalInstallBackup.OpenOriginalGptForUninstallAsync(
+                            activeClient,
+                            _bootMaintenanceOriginalDirectory ?? string.Empty,
+                            progress: null,
+                            token);
+                    }
 
                     // 唯一一次真实调用：已有模式只校验原始目录，正常模式才在父目录下新建子目录。
                     var set = useExisting
@@ -914,6 +935,12 @@ public partial class MainWindow
         }
 
         SetText(InternalInstallBackupStatusText, message);
+
+        // 卸载中全新备份页不可见：把同一份真实状态同时写到可见的来源页准备状态栏。
+        if (IsModernUserdataUninstallMode)
+        {
+            SetText(BootMaintenancePrepareStatusText, message);
+        }
     }
 
     private void SetInternalInstallBackupVerified(UiMessage message)

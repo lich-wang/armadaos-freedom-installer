@@ -211,11 +211,11 @@ public partial class MainWindow
 
                     SetInternalInstallCheckStatus(M("Dynamic.InternalInstall.Check.Started", target.Serial));
 
-                    // 共享默认路线：非内部模式的默认检查只读安卓身份，不走 Fastboot 往返；
+                    // 卸载需要为保留项目引导取得当前锁状态；其他维护模式默认只读安卓身份。
                     // 「高级：核验Bootloader」按钮（SharedFastbootCheckButton）的 sender 保留原有完整检查。
                     var fromSharedAdvancedButton = sender is Button sharedButton
                         && string.Equals(sharedButton.Name, "SharedFastbootCheckButton", StringComparison.Ordinal);
-                    if (IsSharedNonInternalDeviceMode && !fromSharedAdvancedButton)
+                    if (IsSharedNonInternalDeviceMode && !IsModernUserdataUninstallMode && !fromSharedAdvancedButton)
                     {
                         await CheckSharedAndroidTargetAsync(target.Serial, token);
                         return;

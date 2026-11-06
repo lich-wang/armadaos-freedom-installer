@@ -204,7 +204,11 @@ internal static class Program
                           $"最后确认的阶段 {result.LastVerifiedStage?.ToString() ?? "无"}，" +
                           $"已校验的槽位 {string.Join(",", result.VerifiedSlots)}");
         Console.WriteLine($"证据目录: {prepared.EvidenceDirectory}");
-        return result.Outcome == InternalInstallOutcome.Completed ? 0 : 1;
+        // The direct route ends in InstallationCompleted (every write read back, slots verified, normal reset
+        // accepted); Completed is the both-OS acceptance of the other routes. Anything else is a failure.
+        return result.Outcome is InternalInstallOutcome.Completed or InternalInstallOutcome.InstallationCompleted
+            ? 0
+            : 1;
     }
 
     // ------------------------------------------------------------------ helpers

@@ -123,6 +123,7 @@ def _new_layout(
     extra_tail_sectors: int = 0,
     duplicate_backup: bool = False,
     with_backup_owned: bool = True,
+    tail_padding_sectors: int = 0,
 ) -> tuple[dict, dict]:
     """Build the 128 GiB pair whose tail is userdata, boot, root and the new backup.
 
@@ -153,7 +154,7 @@ def _new_layout(
 
     # ``userdataEndLbaExclusive - 1`` is the last usable LBA, which is also the
     # end of the factory userdata partition in this fixture.
-    factory_end = meta["userdataEndLbaExclusive"] - 1
+    factory_end = meta["userdataEndLbaExclusive"] - 1 - tail_padding_sectors
 
     primary = meta["currentPrimary"]
     backup = meta["currentBackup"]
@@ -245,6 +246,32 @@ def _new_layout(
 
 class UninstallTailBackupRegressionTests(unittest.TestCase):
     maxDiff = None
+
+    def test_aligned_tail_is_retained_by_real_gpt_bridge(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            tmp = Path(temporary)
+            # The 512-byte fixture ends nine sectors before a MiB boundary.
+            request, meta = _new_layout(tmp, tail_padding_sectors=2039)
+            disk = _read_gpt(request, meta)
+            backup = next(e for e in disk.entries if e.name == "ARMADA_BACKUP")
+            self.assertEqual(0, (backup.last_lba + 1) % 2048)
+            plan = edl_gpt_cli.prepare_plan(request)
+            self.assertEqual(backup.first_lba, plan["userdataEndLbaExclusive"])
+            rebuilt = portable_gpt.read_gpt(portable_gpt.GptImageReader(
+                Path(plan["postPrimary"]["path"]).read_bytes(),
+                Path(plan["postBackup"]["path"]).read_bytes(), meta["diskBytes"]),
+                request["sectorSize"], meta["diskBytes"])
+            retained = next(e for e in rebuilt.entries if e.name == "ARMADA_BACKUP")
+            self.assertEqual(backup, retained)
+            self.assertFalse(any(e.name in ("ARMADA_BOOT", "ARMADA_ROOT") for e in rebuilt.entries))
+
+    def test_arbitrary_tail_padding_is_rejected(self) -> None:
+        for padding in (1, 2038, 2040, 4087):
+            with self.subTest(padding=padding), tempfile.TemporaryDirectory() as temporary:
+                request, meta = _new_layout(Path(temporary), tail_padding_sectors=padding)
+                _read_gpt(request, meta)
+                with self.assertRaises(portable_gpt.GptError):
+                    edl_gpt_cli.prepare_plan(request)
 
     # ------------------------------------------------------------ accepted layouts
 

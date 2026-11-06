@@ -81,6 +81,24 @@ public partial class MainWindow
 
     private bool HasPrepared => _internalInstallBackend is not null && _internalInstallArtifacts is not null;
 
+    /// <summary>
+    /// Whether the current backend has issued a write. <c>ExecutionStarted</c> is set as soon as an execution is
+    /// admitted, even when the read-only revalidation then refuses it, so only a write state past
+    /// <c>NoneIssued</c> proves a write; from then on the backend owns the 9008 session and its reset.
+    /// </summary>
+    private bool HasInternalInstallWriteIssued
+    {
+        get
+        {
+            var snapshot = _internalInstallBackend?.Snapshot;
+            return snapshot is { ExecutionStarted: true }
+                && snapshot.WriteState != InternalInstallWriteState.NoneIssued;
+        }
+    }
+
+    /// <summary>A backend that issued no write can be released and prepared again; one that wrote is kept.</summary>
+    private bool CanReleaseInternalInstallBackend => !_internalInstallExecutionActive && !HasInternalInstallWriteIssued;
+
     // ================================================================ 导航
 
     private bool CanEnterStep(int step) => step switch
@@ -187,7 +205,7 @@ public partial class MainWindow
             && _internalInstallBackup is null
             && !string.IsNullOrWhiteSpace(_internalInstallBackupParent);
 
-        var packageEditable = idle && HasBackup && !_internalInstallExecuteAttempted;
+        var packageEditable = idle && HasBackup && CanReleaseInternalInstallBackend;
         InternalInstallPackageBox.IsEnabled = packageEditable;
         InternalInstallPackageBrowseButton.IsEnabled = packageEditable;
         InternalInstallPackageValidateButton.IsEnabled = packageEditable
@@ -211,11 +229,11 @@ public partial class MainWindow
             && !_internalInstallExecuteAttempted
             && InternalInstallEraseRiskCheck.IsChecked == true;
 
-        // Once the install has been started the backend owns the 9008 session (and resets the tablet itself),
-        // so the exit card is no longer offered.
+        // Once a write has been issued the backend owns the 9008 session (and resets the tablet itself), so the
+        // exit card is no longer offered; after a refused pre-write revalidation it is offered again.
         InternalInstallExitMaintenancePanel.IsVisible = _internalInstallClient is not null
             && !_internalInstallExitVerified
-            && !_internalInstallExecuteAttempted;
+            && CanReleaseInternalInstallBackend;
         InternalInstallExitMaintenanceButton.IsEnabled = idle;
     }
 
@@ -960,7 +978,10 @@ public partial class MainWindow
             return;
         }
 
-        if (HasPrepared && _internalInstallArtifacts!.Allocation.AndroidBytes == _internalInstallAllocation.AndroidBytes)
+        // A backend whose execution was admitted is single use; after a pre-write failure prepare a fresh one.
+        if (HasPrepared
+            && !_internalInstallExecuteAttempted
+            && _internalInstallArtifacts!.Allocation.AndroidBytes == _internalInstallAllocation.AndroidBytes)
         {
             NavigateInternalInstallStep(3);
             return;
@@ -1106,14 +1127,21 @@ public partial class MainWindow
         SetText(InternalInstallAcceptanceStatusText, "Dynamic.InternalInstall.Execution.Acceptance.NotStarted");
     }
 
-    /// <summary>Drops the prepared plan before anything was written; files on disk are kept.</summary>
+    /// <summary>Drops the prepared plan while nothing was written; files on disk are kept.</summary>
     private void ResetConfirmation()
     {
-        if (_internalInstallExecuteAttempted)
+        if (!CanReleaseInternalInstallBackend)
         {
             return;
         }
 
+        ClearConfirmation();
+    }
+
+    private void ClearConfirmation()
+    {
+        _internalInstallExecuteAttempted = false;
+        _internalInstallExecutionError = null;
         _internalInstallBackend?.Dispose();
         _internalInstallBackend = null;
         _internalInstallAssets?.Dispose();
@@ -1517,7 +1545,7 @@ public partial class MainWindow
     {
         var client = _internalInstallClient;
         var expected = _internalInstallDeviceCheck?.Android;
-        if (_busy || client is null || _internalInstallExecuteAttempted)
+        if (_busy || client is null || !CanReleaseInternalInstallBackend)
         {
             return;
         }
@@ -1625,8 +1653,7 @@ public partial class MainWindow
             return;
         }
 
-        _internalInstallExecuteAttempted = false;
-        ResetConfirmation();
+        ClearConfirmation();
         ResetCapacity();
         _internalInstallBackup?.Dispose();
         _internalInstallBackup = null;

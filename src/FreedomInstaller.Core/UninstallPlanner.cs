@@ -285,10 +285,13 @@ public static class UninstallPlanner
             }
 
             var backupEnd = backup!.StartSector + backup.SectorCount;
-            if (backupEnd != installation.OriginalUserdataEndSector)
+            // Current installs align the tail down to a MiB; older installs used the exact factory end.
+            var factoryEnd = installation.OriginalUserdataEndSector;
+            var alignedEnd = factoryEnd / (MiB / sectorSize) * (MiB / sectorSize);
+            if (backupEnd != factoryEnd && backupEnd != alignedEnd)
             {
                 throw new ArgumentException(
-                    $"{LinuxBackupName} 的末端 {backupEnd} 与安装记录的原 userdata 末端 {installation.OriginalUserdataEndSector} 不一致。",
+                    $"{LinuxBackupName} 的末端 {backupEnd} 既不匹配原 userdata 末端 {factoryEnd}，也不匹配安装对齐末端 {alignedEnd}。",
                     nameof(installation));
             }
         }

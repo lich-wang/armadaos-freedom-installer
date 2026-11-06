@@ -656,10 +656,14 @@ def plan_restore(
             raise GptError(
                 "current backup partition does not start right after root"
             )
-        if backup.last_lba != original_userdata.last_lba:
+        # Accept the current MiB-aligned tail and the historical exact-end layout.
+        factory_end = original_userdata.last_lba + 1
+        alignment = (1 << 20) // sector
+        aligned_end = factory_end // alignment * alignment
+        if backup.last_lba + 1 not in (factory_end, aligned_end):
             raise GptError(
-                "current backup partition does not end at the original "
-                "userdata end"
+                "current backup partition matches neither the original "
+                "userdata end nor its install alignment"
             )
         if backup.last_lba - backup.first_lba + 1 != (2 << 30) // sector:
             raise GptError("current backup partition is not exactly 2 GiB")

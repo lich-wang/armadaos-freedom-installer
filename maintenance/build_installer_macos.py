@@ -49,6 +49,8 @@ _PROPERTY_NAMES = (
     "BundledEdlRawPacker",
     "BundledEdlRawUnpacker",
     "BundledAvbSigningKey",
+    "BundledGblPrcEfi",
+    "BundledGblRowEfi",
 )
 
 # (profile, archive file name, MSBuild property)
@@ -98,7 +100,7 @@ def prepare(repo_root, work_dir, manifest_path=None):
 
     # --- Phase 2: official inputs -----------------------------------------
     fetched = fetch_build_inputs.fetch_all(manifest, str(downloads_root))
-    for dl_id in ("libusbPackage", "libusbLicense"):
+    for dl_id in ("libusbPackage", "libusbLicense", "gblPrc", "gblRow"):
         if dl_id not in fetched:
             raise SystemExit(f"fetch error: missing download id {dl_id!r}")
 
@@ -160,6 +162,9 @@ def prepare(repo_root, work_dir, manifest_path=None):
         "BundledEdlRawPacker": str(packer.resolve()),
         "BundledEdlRawUnpacker": str(unpacker.resolve()),
         "BundledAvbSigningKey": str((repo_root / "vendor" / "aosp" / "testkey_rsa4096.pem").resolve()),
+        # GblPreserveOem stages these embedded EFI files; Core embeds them only when the props name them.
+        "BundledGblPrcEfi": str(Path(fetched["gblPrc"]).resolve()),
+        "BundledGblRowEfi": str(Path(fetched["gblRow"]).resolve()),
     }
     packages = {}
     for profile, archive_name, prop in _PROFILES:

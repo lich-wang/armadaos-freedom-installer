@@ -7,7 +7,7 @@ using FreedomInstaller.Core;
 namespace FreedomInstaller.App;
 
 /// <summary>
-/// 卸载（现代四步向导）执行与收尾层：真实执行 <see cref="UninstallWorkflow.RunAsync"/>、
+/// 卸载向导执行与收尾层：真实执行 <see cref="UninstallWorkflow.RunAsync"/>、
 /// 一次复位、离开确认与关闭保护。写入全部由 Core 完成；这里只按真实返回状态渲染，
 /// 绝不重发复位、不查询安卓启动、不伪造完成。
 /// <para>
@@ -76,12 +76,17 @@ public partial class MainWindow
         && HasBootMaintenanceDeviceProof
         && !HasUnresolvedModernUserdataUninstallState
         && BootMaintenanceRiskCheck.IsChecked == true
+        && (!_userdataUninstallRestoreStockBoot
+            || (_userdataUninstallStockPlan is not null
+                && _userdataUninstallStockPlan.Mode == MaintenanceMode.RestoreStock))
         && _userdataUninstallBackend is not null
-        && _userdataUninstallMenu is not null
+        && HasPreparedUninstallBootPlan
         && _userdataUninstallOriginal is not null
         && _internalInstallBackup is not null
         && _internalInstallEdlClient is not null
-        && _internalInstallEdlEntry is not null;
+        && _internalInstallEdlEntry is not null
+        && _runner is not null
+        && !string.IsNullOrWhiteSpace(_internalInstallBackupParent);
 
     /// <summary>卸载进度阶段的纯显示文案；旧 boot 还原枚举值不属于本流程，一律归入开始阶段。</summary>
     private static string UserdataUninstallStageKey(UninstallStage stage) => stage switch
@@ -124,6 +129,13 @@ public partial class MainWindow
         var client = _internalInstallEdlClient!;
         var fresh = _internalInstallBackup!;
         var entry = _internalInstallEdlEntry!;
+        var runner = _runner!;
+        var parent = _internalInstallBackupParent!;
+        var originalDirectory = _userdataUninstallOriginal!.DirectoryPath;
+        var capturedRestoreStock = _userdataUninstallRestoreStockBoot;
+        var capturedStockPlan = _userdataUninstallStockPlan;
+        var freshDirectory = fresh.DirectoryPath;
+        var backendBackupDirectory = backend.BackupDirectory;
         var inputs = backend.Inputs;
         if (inputs is null)
         {
@@ -137,6 +149,10 @@ public partial class MainWindow
         var retained = inputs.Record.BoardBackupPartUuid is not null
             ? T("Dynamic.UserdataUninstall.RetainedBackup") + "\n"
             : string.Empty;
+        var bootBehaviorLine = capturedRestoreStock
+            ? T("Dynamic.UserdataUninstall.Runtime.ConfirmBody.BootBehavior.RestoreStock")
+            : T("Dynamic.UserdataUninstall.Runtime.ConfirmBody.BootBehavior.KeepProject");
+
         var body = T(
             "Dynamic.UserdataUninstall.Runtime.ConfirmBody",
             inputs.Identity.Model,
@@ -145,24 +161,35 @@ public partial class MainWindow
             FormatBytes(inputs.Plan.RestoredAndroidBytes),
             DeletedPartitionExtents(inputs),
             retained,
-            fresh.DirectoryPath,
-            _userdataUninstallOriginal?.DirectoryPath ?? UnknownValue,
-            backend.BackupDirectory,
+            bootBehaviorLine,
+            freshDirectory,
+            originalDirectory,
+            backendBackupDirectory,
             powerLine);
 
         // 追加真实分区槽位清单：与实际 View 相同的键与字段，逐槽一行。
-        var slotLines = new System.Collections.Generic.List<string>();
-        foreach (var slot in _userdataUninstallMenu!.Slots)
+        // 勾选恢复原厂引导时改由后续 stock 方案摘要输出，避免与实际方案冲突。
+        if (!capturedRestoreStock)
         {
-            // 与实际 View 同源：Candidate 为 null 表示该槽位不写入；SourceSlot 永远是真实 a/b。
-            slotLines.Add(slot.Candidate is null
-                ? T("Dynamic.UserdataUninstall.SlotKeep", slot.Slot)
-                : T("Dynamic.UserdataUninstall.SlotWriteDefault", slot.Slot, slot.SourceSlot));
+            var slotLines = new System.Collections.Generic.List<string>();
+            foreach (var slot in _userdataUninstallMenu!.Slots)
+            {
+                // 与实际 View 同源：Candidate 为 null 表示该槽位不写入；SourceSlot 永远是真实 a/b。
+                slotLines.Add(slot.Candidate is null
+                    ? T("Dynamic.UserdataUninstall.SlotKeep", slot.Slot)
+                    : T("Dynamic.UserdataUninstall.SlotWriteDefault", slot.Slot, slot.SourceSlot));
+            }
+
+            if (slotLines.Count > 0)
+            {
+                body += "\n" + string.Join("\n", slotLines);
+            }
         }
 
-        if (slotLines.Count > 0)
+        // 勾选恢复原厂引导：追加真实引导恢复方案摘要（含空槽保留与已为原厂的真相）。
+        if (capturedRestoreStock && capturedStockPlan is not null)
         {
-            body += "\n" + string.Join("\n", slotLines);
+            body += "\n" + UserdataUninstallStockPlanSlotSummary(capturedStockPlan);
         }
 
         var answer = MessageBox.Show(
@@ -178,12 +205,14 @@ public partial class MainWindow
             return;
         }
 
-        // 确认后逐项复核捕获：模式、步骤、风险、引用与空闲状态任何一个变化都放弃执行。
+        // 确认后逐项复核捕获：模式、步骤、风险、引用、选项及方案任何变化都放弃执行。
         if (!CanExecuteModernUserdataUninstall()
             || !ReferenceEquals(_userdataUninstallBackend, backend)
             || !ReferenceEquals(_internalInstallEdlClient, client)
             || !ReferenceEquals(_internalInstallBackup, fresh)
-            || !ReferenceEquals(_internalInstallEdlEntry, entry))
+            || !ReferenceEquals(_internalInstallEdlEntry, entry)
+            || _userdataUninstallRestoreStockBoot != capturedRestoreStock
+            || !ReferenceEquals(_userdataUninstallStockPlan, capturedStockPlan))
         {
             return;
         }
@@ -228,9 +257,62 @@ public partial class MainWindow
 
                     if (result.Success && result.Stage == UninstallStage.AwaitingFactoryReset)
                     {
-                        // 全部写入与读回校验已由 Core 完成：这里才有权发送唯一一次复位。
+                        // 全部写入与读回校验已由 Core 完成：这里才有权决定复位还是原厂引导恢复。
                         AppendLocalizedLog(M("Dynamic.UserdataUninstall.Runtime.LogSuccess"));
                         _userdataUninstallResetAttempted = true;
+
+                        if (capturedRestoreStock)
+                        {
+                            // 勾选恢复原厂引导：调用 Core 帮助器完成原厂引导恢复并自行接受复位；
+                            // 恢复路径绝不调用 client.ResetAsync。辅助器可能直接抛异常（源/目标漂移或读回失败），
+                            // 由外层 catch 标记为未解决失败；这里只负责成功路径的结果处理。
+                            SetModernUserdataUninstallExitStatus(M("Dynamic.UserdataUninstall.Runtime.RestoringStockBoot"));
+
+                            var stockProgress = new Progress<InternalInstallProgress>(report =>
+                            {
+                                if (_closed || !_userdataUninstallOperationActive)
+                                {
+                                    return;
+                                }
+
+                                SetModernUserdataUninstallExitStatus(M(
+                                    "Dynamic.UserdataUninstall.Runtime.RestoringStockBootProgress",
+                                    FormatBytes(report.CompletedBytes),
+                                    FormatBytes(report.TotalBytes)));
+                            });
+
+                            var stockResult = await UninstallStockBootRestoration.RestoreAfterUninstallAsync(
+                                result,
+                                capturedStockPlan!,
+                                client,
+                                originalDirectory,
+                                runner,
+                                TemporaryWorkRoot,
+                                stockProgress,
+                                CancellationToken.None);
+
+                            _userdataUninstallStockRestoreResult = stockResult;
+
+                            if (stockResult.Outcome == BootMaintenanceOutcome.Completed
+                                && stockResult.WriteState == InternalInstallWriteState.AllVerified)
+                            {
+                                _userdataUninstallResetAcked = true;
+                                _userdataUninstallCompleted = true;
+                            }
+                            else
+                            {
+                                AppendLocalizedLog(M("Dynamic.RawValue", stockResult.Error ?? string.Empty));
+                                SetModernUserdataUninstallExitStatus(M(
+                                    "Dynamic.UserdataUninstall.Runtime.StockRestoreFailed",
+                                    stockResult.Outcome.ToString(),
+                                    stockResult.WriteState.ToString(),
+                                    string.IsNullOrWhiteSpace(stockResult.Error) ? string.Empty : stockResult.Error));
+                            }
+
+                            return;
+                        }
+
+                        // 未勾选：保持现有行为，发送唯一一次复位。
                         SetModernUserdataUninstallExitStatus(M("Dynamic.UserdataUninstall.Runtime.Resetting"));
                         var reset = await client.ResetAsync(CancellationToken.None);
                         if (reset.CommandAccepted)
@@ -278,7 +360,9 @@ public partial class MainWindow
                 _userdataUninstallCompletionToastShown = true;
                 MessageBox.Show(
                     this,
-                    T("Dynamic.UserdataUninstall.Runtime.CompletionBody"),
+                    T(capturedRestoreStock
+                        ? "Dynamic.UserdataUninstall.Runtime.CompletionBodyStock"
+                        : "Dynamic.UserdataUninstall.Runtime.CompletionBody"),
                     T("Dynamic.UserdataUninstall.Runtime.CompletionTitle"),
                     MessageBoxButton.OK,
                     MessageBoxImage.Information);
@@ -307,9 +391,39 @@ public partial class MainWindow
 
         if (_userdataUninstallCompleted)
         {
-            SetModernUserdataUninstallExitStatus(M("Dynamic.UserdataUninstall.Runtime.Completed"));
+            // 勾选恢复原厂引导时使用专用完成文案，避免与普通复位混淆。
+            SetModernUserdataUninstallExitStatus(M(_userdataUninstallRestoreStockBoot
+                ? "Dynamic.UserdataUninstall.Runtime.StockRestoreCompleted"
+                : "Dynamic.UserdataUninstall.Runtime.Completed"));
             BootMaintenanceProgressBar.IsIndeterminate = false;
             BootMaintenanceProgressBar.Value = 100;
+            return;
+        }
+
+        // 勾选恢复原厂引导时的失败优先于通用 AwaitingFactoryReset 文案披露。
+        // 情形一：帮助器抛异常，resetAttempted 已置位，但执行未完成且状态未知。
+        if (_userdataUninstallRestoreStockBoot
+            && _userdataUninstallResetAttempted
+            && !_userdataUninstallCompleted
+            && _userdataUninstallExecutionUnknown)
+        {
+            SetModernUserdataUninstallExitStatus(M(
+                "Dynamic.UserdataUninstall.Runtime.StockRestoreFailedUnknown"));
+            BootMaintenanceProgressBar.IsIndeterminate = false;
+            return;
+        }
+
+        // 情形二：帮助器返回了明确失败结果（Outcome/WriteState 非完成态）。
+        if (_userdataUninstallStockRestoreResult is { } stockResult
+            && !(stockResult.Outcome == BootMaintenanceOutcome.Completed
+                && stockResult.WriteState == InternalInstallWriteState.AllVerified))
+        {
+            SetModernUserdataUninstallExitStatus(M(
+                "Dynamic.UserdataUninstall.Runtime.StockRestoreFailed",
+                stockResult.Outcome.ToString(),
+                stockResult.WriteState.ToString(),
+                string.IsNullOrWhiteSpace(stockResult.Error) ? string.Empty : stockResult.Error));
+            BootMaintenanceProgressBar.IsIndeterminate = false;
             return;
         }
 
@@ -549,7 +663,7 @@ public partial class MainWindow
                 }
 
                 _userdataUninstallCloseApproved = true;
-                Close();
+                _ = Dispatcher.InvokeAsync(Close);
             }
             finally
             {
@@ -570,7 +684,7 @@ public partial class MainWindow
 
             SafeResetModernUserdataUninstallState();
             _userdataUninstallCloseApproved = true;
-            Close();
+            _ = Dispatcher.InvokeAsync(Close);
         }
         finally
         {

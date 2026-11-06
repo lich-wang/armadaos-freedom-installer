@@ -208,16 +208,30 @@ public sealed partial class BootMaintenanceBackend
             await RequireDeviceFactsAsync(_deviceFacts, _client, cancellationToken).ConfigureAwait(false);
             RequireSameCapture(_ownedCurrent, _callerBackup);
 
-            // The misc partition was just re-read from the device and hashed back to the held capture
-            // above, so its fresh control bytes are actual facts: the pass may only run when the device
-            // still sits in the exact slot prepared for and the misc control hash is unchanged. On the
-            // Android route the Step-1 slot guard additionally re-verified its own current slot. Any misc
-            // change after preparation is refused here, before the first write, as NoneIssued.
-            VerifiedEdlFile miscClaim = RegionClaim(_ownedCurrent.Files, "misc", "the current rollback capture");
-            Task<BootSlotControlFacts> miscFactsTask = _executionPolicy == RegionExecutionPolicy.TfRestorePrevious
-                ? BootSlotControl.ReadForRecoveryAsync(miscClaim, cancellationToken)
-                : BootSlotControl.ReadAsync(miscClaim, cancellationToken);
-            BootSlotControlFacts miscFacts = await miscFactsTask.ConfigureAwait(false);
+            // The capture was just re-read from the device and hashed back to the held copy above, so
+            // its fresh slot facts are actual: the pass may only run when the device still sits in the
+            // exact slot prepared for and the control/authority hash is unchanged. On the Android route
+            // the Step-1 slot guard additionally re-verified its own current slot. Any change after
+            // preparation is refused here, before the first write, as NoneIssued. TfRestorePrevious keeps
+            // its existing recovery reader wrapped; all other policies use the strict resolver.
+            CurrentBootSlotFacts miscFacts;
+            if (_executionPolicy == RegionExecutionPolicy.TfRestorePrevious)
+            {
+                VerifiedEdlFile miscClaim = RegionClaim(_ownedCurrent.Files, "misc", "the current rollback capture");
+                BootSlotControlFacts recoveryFacts = await BootSlotControl
+                    .ReadForRecoveryAsync(miscClaim, cancellationToken)
+                    .ConfigureAwait(false);
+                miscFacts = new CurrentBootSlotFacts(
+                    recoveryFacts.CurrentSlot,
+                    recoveryFacts.ControlSha256,
+                    recoveryFacts.NeedsBootloaderAttention);
+            }
+            else
+            {
+                miscFacts = await CurrentBootSlot
+                    .ReadAsync(_ownedCurrent, cancellationToken)
+                    .ConfigureAwait(false);
+            }
 
             lock (_gate)
             {

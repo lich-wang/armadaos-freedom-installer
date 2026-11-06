@@ -463,11 +463,12 @@ public static partial class CurrentBootMenuPlanner
             // Own pinned tool leases, independent of the caller's instance.
             tools = await callerTools.AcquireAsync(ct).ConfigureAwait(false);
 
-            // The misc current-slot fact is read and matched before any source
-            // analysis, exactly as before.
-            BootSlotControlFacts observed = await BootSlotControl.ReadAsync(
-                RequireRole(backup, "misc"),
-                ct).ConfigureAwait(false);
+            // The current-slot fact is read and matched before any source analysis.
+            // CurrentBootSlot verifies the misc control block and can resolve an
+            // all-zero control on a Qualcomm Y700 from the GPT slot flags.
+            CurrentBootSlotFacts observed = await CurrentBootSlot
+                .ReadAsync(backup, ct)
+                .ConfigureAwait(false);
             string observedCurrentSlot = observed.CurrentSlot;
             if (!string.Equals(observedCurrentSlot, currentSlot, StringComparison.Ordinal))
             {

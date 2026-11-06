@@ -267,7 +267,7 @@ public partial class MainWindow
             InvalidateInternalInstallAllocation(clearPackage: true);
             SetInternalInstallCapacityPackageStatus(M("Dynamic.InternalInstall.Capacity.Importing"));
 
-            var workRoot = Path.Combine(parent, InternalPackageImportsDirectoryName);
+            var workRoot = Path.Combine(TemporaryWorkRoot, InternalPackageImportsDirectoryName);
             try
             {
                 Directory.CreateDirectory(workRoot);
@@ -681,7 +681,7 @@ public partial class MainWindow
                             backup,
                             androidGiB,
                             storage,
-                            parentPath,
+                            TemporaryWorkRoot,
                             token);
 
                         if (_closeRequested || _closed)

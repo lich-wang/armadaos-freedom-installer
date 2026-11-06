@@ -249,7 +249,7 @@
   "Static.ThemeLabelLight": "浅色",
   "Static.ThemeTooltipDark": "当前为深色主题，点击切换为浅色",
   "Static.ThemeTooltipLight": "当前为浅色主题，点击切换为深色",
-  "Static.Title": "ArmadaOS Freedom 安装助手 0.7.5",
+  "Static.Title": "ArmadaOS Freedom 安装助手 {0}",
   "Static.ToolsStatusInitial": "尚未指定工具目录。",
   "Static.UninstallInputLead": "选择本机原始 GPT 主分区表和备份分区表，校验查看空间回收方案；卸载会保留现有引导。",
   "Static.UninstallInputTitle": "卸载所需输入",

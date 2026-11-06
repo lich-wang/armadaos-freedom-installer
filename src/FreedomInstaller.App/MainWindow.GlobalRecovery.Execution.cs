@@ -426,7 +426,7 @@ public partial class MainWindow
             throw new InvalidOperationException(T("Dynamic.Global.Error.ToolsMissing"));
         }
 
-        string workRoot = Path.Combine(GetGlobalSessionDirectory(), GlobalToolchainFolder);
+        string workRoot = Path.Combine(TemporaryWorkRoot, GlobalToolchainFolder);
         EdlToolchain tools = await EdlToolchain.LoadAsync(archive, workRoot, token);
         if (!ReferenceEquals(tools.Profile, profile))
         {

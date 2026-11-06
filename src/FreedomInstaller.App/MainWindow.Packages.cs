@@ -214,7 +214,7 @@ public partial class MainWindow
     /// 这里只负责算出路径，不创建目录 —— 目录由界面导入流程在来源与身份检查通过之后、
     /// 调用 Core 导入之前创建。
     /// </summary>
-    private static string ResolvePackageWorkRoot()
+    private string ResolvePackageWorkRoot()
     {
         var configured = Environment.GetEnvironmentVariable(PackageWorkRootVariable);
         if (!string.IsNullOrWhiteSpace(configured))
@@ -222,7 +222,7 @@ public partial class MainWindow
             return Path.GetFullPath(configured.Trim());
         }
 
-        return Path.Combine(BundledTools.GetCacheRoot(), PackageImportsDirectoryName);
+        return Path.Combine(TemporaryWorkRoot, PackageImportsDirectoryName);
     }
 
     // ---------- 释放 ----------
@@ -300,6 +300,13 @@ public partial class MainWindow
         }
 
         base.OnClosing(e);
+        if (!e.Cancel && _activeWorkCompletion is { Task.IsCompleted: false } active)
+        {
+            _closeRequested = true;
+            e.Cancel = true;
+            _cts?.Cancel();
+            _ = CloseAfterImportAsync(active.Task);
+        }
     }
 
     private async Task CloseAfterImportAsync(Task importTask)
@@ -322,6 +329,8 @@ public partial class MainWindow
             return;
         }
 
+        await System.Windows.Threading.Dispatcher.Yield(System.Windows.Threading.DispatcherPriority.ContextIdle);
+        if (_closed) return;
         _closeRequested = false;
         Close();
     }

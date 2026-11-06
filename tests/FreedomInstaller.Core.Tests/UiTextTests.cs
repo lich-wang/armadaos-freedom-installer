@@ -37,13 +37,13 @@ public sealed class UiTextTests
         Assert.Equal(UiText.ChineseLanguage, chinese.Language);
         Assert.Equal("单翼", chinese.Get("Static.AuthorName"));
         Assert.Equal("已授权", chinese.Get("Dynamic.ConnectionState.Authorized"));
-        Assert.Equal("ArmadaOS Freedom 安装助手 0.7.5", chinese.Get("Static.Title"));
+        Assert.Equal("ArmadaOS Freedom 安装助手 9.8.7", chinese.Get("Static.Title", "9.8.7"));
 
         var english = new UiText("en");
         Assert.Equal(UiText.EnglishLanguage, english.Language);
         Assert.Equal("danyi", english.Get("Static.AuthorName"));
         Assert.Equal("Authorized", english.Get("Dynamic.ConnectionState.Authorized"));
-        Assert.Equal("ArmadaOS Freedom Installer 0.7.5", english.Get("Static.Title"));
+        Assert.Equal("ArmadaOS Freedom Installer 9.8.7", english.Get("Static.Title", "9.8.7"));
 
         var unknown = new UiText("fr-FR");
         Assert.Equal(UiText.DefaultLanguage, unknown.Language);

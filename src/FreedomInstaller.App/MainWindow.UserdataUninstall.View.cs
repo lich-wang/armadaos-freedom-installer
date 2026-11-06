@@ -7,22 +7,25 @@ using FreedomInstaller.Core;
 namespace FreedomInstaller.App;
 
 /// <summary>
-/// 卸载（现代四步向导）视图层：页面可见性、导航渲染、按钮可用性与确认页内容。
+/// 卸载向导视图层：页面可见性、导航渲染、按钮可用性与确认页内容。
 /// 复用共享设备准备页与维护的来源/确认页面，只按本模式写入自己的文案；
-/// 执行按钮在 U1 阶段始终禁用，真实执行属于紧随其后的 U2 票。
+/// 执行按钮仅在准备与风险确认完成后启用。
 /// </summary>
 public partial class MainWindow
 {
     // ---------- 导航 ----------
 
-    /// <summary>程序化重写四步侧栏勾选；与安装/维护共用同一组控件。</summary>
+    /// <summary>
+    /// 程序化重写共享侧栏勾选；卸载隐藏内部第 1 步，勾选只落在 0、2、3。
+    /// 序号与文案由共享导航渲染统一设置。
+    /// </summary>
     private void RestoreModernUserdataUninstallNav()
     {
         _suppressInternalInstallNav = true;
         try
         {
             InternalInstallNavCheck.IsChecked = _internalInstallStep == 0;
-            InternalInstallNavBackup.IsChecked = _internalInstallStep == 1;
+            InternalInstallNavBackup.IsChecked = false;
             InternalInstallNavCapacity.IsChecked = _internalInstallStep == 2;
             InternalInstallNavConfirm.IsChecked = _internalInstallStep == 3;
         }
@@ -32,10 +35,10 @@ public partial class MainWindow
         }
     }
 
-    /// <summary>卸载四步导航唯一入口：越界、忙碌或门槛未满足时拒绝并恢复勾选。</summary>
+    /// <summary>卸载向导导航唯一入口：越界、忙碌、隐藏步骤或门槛未满足时拒绝并恢复勾选。</summary>
     private void NavigateModernUserdataUninstallStep(int step)
     {
-        if (!IsModernUserdataUninstallMode || _busy || step is < 0 or > 3)
+        if (!IsModernUserdataUninstallMode || _busy || step is < 0 or > 3 || step == 1)
         {
             RestoreModernUserdataUninstallNav();
             return;
@@ -55,8 +58,8 @@ public partial class MainWindow
     // ---------- 渲染 ----------
 
     /// <summary>
-    /// 按当前步骤写入共享页面的可见性：第 0/1 步用安装检查/备份页，
-    /// 第 2 步复用维护来源页，第 3 步复用维护确认页；容量页与安装确认页始终隐藏。
+    /// 按当前步骤写入共享页面的可见性：第 0 步用安装检查页，第 2 步复用维护来源页，
+    /// 第 3 步复用维护确认页；全新备份页、容量页与安装确认页始终隐藏。
     /// </summary>
     private void RenderModernUserdataUninstallPages()
     {
@@ -69,8 +72,7 @@ public partial class MainWindow
 
         InternalInstallCheckPage.Visibility =
             _internalInstallStep == 0 ? Visibility.Visible : Visibility.Collapsed;
-        InternalInstallBackupPage.Visibility =
-            _internalInstallStep == 1 ? Visibility.Visible : Visibility.Collapsed;
+        InternalInstallBackupPage.Visibility = Visibility.Collapsed;
         InternalInstallCapacityPage.Visibility = Visibility.Collapsed;
         InternalInstallConfirmPage.Visibility = Visibility.Collapsed;
 
@@ -100,6 +102,17 @@ public partial class MainWindow
                 "Dynamic.UserdataUninstall.OriginalSource");
         }
 
+        // 原厂引导恢复复选框及其提示仅在卸载模式可见；其他模式由共享导航方法隐藏。
+        var stockCheckVisible = IsModernUserdataUninstallMode;
+        var stockCheckVisibility = stockCheckVisible ? Visibility.Visible : Visibility.Collapsed;
+        BootMaintenanceRestoreStockCheck.Visibility = stockCheckVisibility;
+        BootMaintenanceConfirmRestoreStockCheck.Visibility = stockCheckVisibility;
+        if (stockCheckVisible)
+        {
+            SyncUserdataUninstallRestoreStockCheckboxes();
+            UpdateUserdataUninstallRestoreStockCheckboxEnabled();
+        }
+
         if (_internalInstallStep == 0)
         {
             SharedEdlEntryHintText.SetResourceReference(
@@ -116,12 +129,13 @@ public partial class MainWindow
         RenderModernUserdataUninstallConfirmPage();
         RenderBootMaintenanceCheckButton();
         RenderModernUserdataUninstallRuntimeStatus();
+        if (_internalInstallStep == 2) RenderUserdataUninstallPreparationError();
         RefreshModernUserdataUninstallActions();
     }
 
     /// <summary>
     /// 确认页（第 3 步）：只按真实准备结果显示设备身份、当前与恢复后的容量、槽位方案与删除范围；
-    /// 保留备份说明只在 Core 校验的 2 GiB 保留备份真实存在时出现。风险勾选真实有效，执行按钮仍禁用（U2）。
+    /// 保留备份说明只在 Core 校验的 2 GiB 保留备份真实存在时出现。执行按钮由准备结果和风险勾选共同控制。
     /// </summary>
     private void RenderModernUserdataUninstallConfirmPage()
     {
@@ -130,7 +144,7 @@ public partial class MainWindow
 
         var backend = _userdataUninstallBackend;
         var inputs = backend?.Inputs;
-        if (backend is null || inputs is null || _userdataUninstallMenu is null)
+        if (backend is null || inputs is null || !HasPreparedUninstallBootPlan)
         {
             SetText(BootMaintenanceDeviceText, "Dynamic.RawValue", string.Empty);
             SetText(BootMaintenanceBackupLocationsText, "Dynamic.RawValue", string.Empty);
@@ -151,9 +165,11 @@ public partial class MainWindow
                 "Dynamic.UserdataUninstall.DeviceSummary",
                 inputs.Identity.Model,
                 inputs.Identity.Serial,
-                _userdataUninstallMenu.CurrentSlot));
+                backend.CurrentSlot));
 
         // 容量摘要：当前安卓分区字节数只来自真实校验输入；恢复后容量来自真实方案。
+        // 引导行为作为新增参数传入，不再在文案中硬编码“保留项目引导与EFI”。
+        var bootBehavior = UserdataUninstallSelectedBootBehaviorText();
         var currentBytes = CurrentUserdataBytes(inputs);
         SetText(
             BootMaintenanceBackupLocationsText,
@@ -161,7 +177,8 @@ public partial class MainWindow
                 "Dynamic.UserdataUninstall.CapacitySummary",
                 FormatBytesOrPlaceholder(currentBytes),
                 FormatBytes(inputs.Plan.RestoredAndroidBytes),
-                DeletedPartitionExtents(inputs)));
+                DeletedPartitionExtents(inputs),
+                bootBehavior));
 
         // 现代尾部 2 GiB 恢复备份区：只在 Core 校验的真实保留备份存在时说明，绝不按名字猜。
         if (inputs.Record.BoardBackupPartUuid is not null)
@@ -176,7 +193,7 @@ public partial class MainWindow
             BootMaintenanceSlotsPanel.Children.Add(retained);
         }
 
-        foreach (var slot in _userdataUninstallMenu.Slots)
+        foreach (var slot in _userdataUninstallMenu?.Slots ?? Array.Empty<CurrentBootMenuSlot>())
         {
             var slotText = new TextBlock
             {
@@ -186,6 +203,12 @@ public partial class MainWindow
             };
 
             // Candidate 为 null 表示该槽位不写入、保留现状；绝不声称两套完整安卓系统都存在。
+            // 勾选恢复原厂引导时以原厂方案槽位为准，不再列出相互矛盾的菜单默认槽位。
+            if (_userdataUninstallRestoreStockBoot)
+            {
+                continue;
+            }
+
             SetText(slotText, slot.Candidate is null
                 ? M("Dynamic.UserdataUninstall.SlotKeep", slot.Slot)
                 : M(
@@ -205,6 +228,12 @@ public partial class MainWindow
             };
             SetText(regionText, M("Dynamic.UserdataUninstall.RemovedPartition", number));
             BootMaintenanceRegionsHost.Children.Add(regionText);
+        }
+
+        // 勾选恢复原厂引导时：逐槽列出真实的引导恢复方案摘要（含空槽保留与已为原厂的真相）。
+        if (_userdataUninstallRestoreStockBoot)
+        {
+            RenderUserdataUninstallStockPlanSlots(BootMaintenanceSlotsPanel);
         }
 
         SetText(BootMaintenanceRiskText, "Dynamic.UserdataUninstall.Risk.Confirm");
@@ -245,8 +274,8 @@ public partial class MainWindow
     // ---------- 可用性 ----------
 
     /// <summary>
-    /// 卸载四步向导的底栏与控件可用性。第 2 步「下一步」需要真实证明、全新备份与有效的原始来源目录；
-    /// 第 3 步的执行按钮在 U1 阶段始终禁用（U2 接管），风险勾选本身真实有效。
+    /// 卸载向导的底栏与控件可用性。第 2 步「下一步」需要真实设备入口前提与有效的原始来源目录；
+    /// 内部第 3 步的执行按钮由执行条件与风险勾选共同控制。
     /// </summary>
     private void RefreshModernUserdataUninstallActions()
     {
@@ -257,27 +286,31 @@ public partial class MainWindow
 
         var protectedState = ProtectedModernUserdataUninstallState;
 
+        // 内部第 1 步在卸载中不可见、不可进入；其余步骤按门槛开放。
         InternalInstallNavCheck.IsEnabled = !_busy && CanEnterModernUserdataUninstallStep(0);
-        InternalInstallNavBackup.IsEnabled = !_busy && CanEnterModernUserdataUninstallStep(1);
+        InternalInstallNavBackup.IsEnabled = false;
         InternalInstallNavCapacity.IsEnabled = !_busy && CanEnterModernUserdataUninstallStep(2);
         InternalInstallNavConfirm.IsEnabled = !_busy && CanEnterModernUserdataUninstallStep(3);
 
+        var previousStep = PreviousModernUserdataUninstallStep(_internalInstallStep);
         PrevButton.IsEnabled = !_busy
-            && _internalInstallStep > 0
-            && CanEnterModernUserdataUninstallStep(_internalInstallStep - 1);
+            && previousStep != _internalInstallStep
+            && CanEnterModernUserdataUninstallStep(previousStep);
 
         NextButton.Visibility = _internalInstallStep < 3 ? Visibility.Visible : Visibility.Collapsed;
+        // 已知活动操作期间绝不只凭已选路径开放下一步；第 2 步还需真实设备入口前提。
         NextButton.IsEnabled = !_busy
             && !protectedState
             && _internalInstallStep < 3
             && (_internalInstallStep < 2
-                ? CanEnterModernUserdataUninstallStep(_internalInstallStep + 1)
-                : HasBootMaintenanceDeviceProof
-                    && _internalInstallBackup is not null
+                ? CanEnterModernUserdataUninstallStep(NextModernUserdataUninstallStep(_internalInstallStep))
+                : HasBootMaintenanceBackupPrerequisite
                     && !string.IsNullOrWhiteSpace(_bootMaintenanceOriginalDirectory)
                     && Directory.Exists(_bootMaintenanceOriginalDirectory));
 
-        // U2 真实执行：按钮只按事实谓词开放；文案在卸载模式第 3 步始终使用本地化「执行」键，不只限可用时。
+        UpdateUserdataUninstallRestoreStockCheckboxEnabled();
+
+        // 按钮只按事实谓词开放；文案在卸载模式第 3 步始终使用本地化「执行」键，不只限可用时。
         ActionButton.Visibility = _internalInstallStep == 3 ? Visibility.Visible : Visibility.Collapsed;
         ActionButton.IsEnabled = CanExecuteModernUserdataUninstall();
         if (_internalInstallStep == 3)
@@ -332,7 +365,7 @@ public partial class MainWindow
             && !protectedState
             && !_userdataUninstallCompleted
             && _userdataUninstallBackend is not null
-            && _userdataUninstallMenu is not null
+            && HasPreparedUninstallBootPlan
             && _userdataUninstallOriginal is not null;
 
         // 共享退出面板只在真实 9008 会话存在且尚未完成时可见；按钮按空闲与未解决状态收紧。

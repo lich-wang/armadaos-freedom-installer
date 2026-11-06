@@ -101,6 +101,12 @@ public partial class MainWindow
 
         RenderSharedDeviceEntryLead();
 
+        // 卸载隐藏内部第 1 步，并把 03/04 重排为 02/03；其他模式恢复显示与原始序号。
+        var uninstall = IsModernUserdataUninstallMode;
+        InternalInstallNavBackup.Visibility = uninstall ? Visibility.Collapsed : Visibility.Visible;
+        SharedWorkflowThirdStepNumber.Text = uninstall ? "02" : "03";
+        SharedWorkflowConfirmStepNumber.Text = uninstall ? "03" : "04";
+
         if (IsBootMaintenanceMode)
         {
             SharedWorkflowThirdStepText.SetResourceReference(TextBlock.TextProperty, "Dynamic.BootMaintenance.Nav.Sources");
@@ -111,7 +117,7 @@ public partial class MainWindow
             SharedWorkflowThirdStepText.SetResourceReference(TextBlock.TextProperty, "Dynamic.TfInstall.Nav.Inputs");
             SharedWorkflowConfirmStepText.SetResourceReference(TextBlock.TextProperty, "Dynamic.TfInstall.Nav.Confirm");
         }
-        else if (IsModernUserdataUninstallMode)
+        else if (uninstall)
         {
             SharedWorkflowThirdStepText.SetResourceReference(TextBlock.TextProperty, "Dynamic.UserdataUninstall.Nav.Sources");
             SharedWorkflowConfirmStepText.SetResourceReference(TextBlock.TextProperty, "Dynamic.UserdataUninstall.Nav.Confirm");
@@ -120,6 +126,28 @@ public partial class MainWindow
         {
             SharedWorkflowThirdStepText.SetResourceReference(TextBlock.TextProperty, "Static.InternalInstall.Nav.Capacity");
             SharedWorkflowConfirmStepText.SetResourceReference(TextBlock.TextProperty, "Static.InternalInstall.Nav.Confirm");
+        }
+
+        // 全新备份提示只在卸载模式显示卸载专属说明，其他模式保持维护原文案；两种模式都重设以正确复位。
+        BootMaintenanceFreshBackupHint.SetResourceReference(
+            TextBlock.TextProperty,
+            uninstall
+                ? "Dynamic.UserdataUninstall.FreshBackupHint"
+                : "Dynamic.BootMaintenance.FreshBackup");
+
+        // 原厂引导恢复复选框及其提示：仅在卸载模式显示，其他模式一律折叠复位。
+        var stockVisibility = uninstall ? Visibility.Visible : Visibility.Collapsed;
+        BootMaintenanceRestoreStockCheck.Visibility = stockVisibility;
+        BootMaintenanceConfirmRestoreStockCheck.Visibility = stockVisibility;
+        if (!uninstall)
+        {
+            BootMaintenanceRestoreStockHint.Visibility = Visibility.Collapsed;
+            BootMaintenanceConfirmRestoreStockHint.Visibility = Visibility.Collapsed;
+        }
+        else
+        {
+            SyncUserdataUninstallRestoreStockCheckboxes();
+            UpdateUserdataUninstallRestoreStockCheckboxEnabled();
         }
     }
 
@@ -190,6 +218,11 @@ public partial class MainWindow
         {
             InternalInstallCheckButton.SetResourceReference(ContentControl.ContentProperty, "Static.InternalInstall.Check.Button");
         }
+
+        var hideOriginalEntry = IsModernUserdataUninstallMode && !_bootMaintenanceAlreadyEdl;
+        SharedEdlEntryHintText.Visibility = hideOriginalEntry ? Visibility.Collapsed : Visibility.Visible;
+        SharedEdlOriginalEntryLabel.Visibility = hideOriginalEntry ? Visibility.Collapsed : Visibility.Visible;
+        BootMaintenanceEntryOriginalRow.Visibility = hideOriginalEntry ? Visibility.Collapsed : Visibility.Visible;
 
         RenderSharedDeviceEntryLead();
         RefreshSharedAdvancedCheckAvailability();
@@ -495,6 +528,19 @@ public partial class MainWindow
                 return; // 用户取消或选择无效：完整保留现有状态。
             }
 
+            // 选择同一路径：保留已接受来源与已有快照；只有真正换源才作废旧快照与准备。
+            if (!string.Equals(
+                uninstallDirectory,
+                _bootMaintenanceOriginalDirectory,
+                StringComparison.OrdinalIgnoreCase))
+            {
+                // 更换来源后，旧来源不能再保持已接受：只释放备份只读对象与显示证据，
+                // 绝不释放仍有效的真实客户端 / 工具链 / 会话。
+                ReleaseInternalInstallBackupObject();
+                ClearInternalInstallRetainedBackupEvidence();
+                RenderInternalInstallBackupDetail();
+            }
+
             _bootMaintenanceOriginalDirectory = uninstallDirectory;
             BootMaintenanceEntryOriginalBox.Text = uninstallDirectory;
             BootMaintenanceOriginalBox.Text = uninstallDirectory;
@@ -621,6 +667,7 @@ public partial class MainWindow
             InvalidateModernUserdataUninstallPreparation();
 
             _bootMaintenanceAlreadyEdl = requested;
+            RenderBootMaintenanceCheckButton();
             RefreshModernUserdataUninstallActions();
             return;
         }

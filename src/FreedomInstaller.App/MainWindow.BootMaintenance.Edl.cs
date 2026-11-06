@@ -58,6 +58,23 @@ public partial class MainWindow
             return;
         }
 
+        if (IsModernUserdataUninstallMode)
+        {
+            if (!await ResolveUninstallBackupDirectoryFromSelectionAsync())
+            {
+                return;
+            }
+
+            if (_closed
+                || !IsModernUserdataUninstallMode
+                || _busy
+                || !_bootMaintenanceAlreadyEdl
+                || HasInternalInstallLiveEdlState)
+            {
+                return;
+            }
+        }
+
         // 历史目录来自用户已选的原厂来源；必须有真实存在的目录作为候选历史，不在此断言载荷资格。
         var selectedDirectory = _bootMaintenanceOriginalDirectory;
         if (string.IsNullOrWhiteSpace(selectedDirectory) || !Directory.Exists(selectedDirectory))
@@ -68,7 +85,41 @@ public partial class MainWindow
 
         // 尚无有效备份父目录时先选择：必须是已存在的独立目录，且不在来源目录里。
         var parent = _internalInstallBackupParent;
-        if (string.IsNullOrWhiteSpace(parent) || !Directory.Exists(parent))
+        if (IsModernUserdataUninstallMode)
+        {
+            string? derived = null;
+            try
+            {
+                derived = Directory.GetParent(Path.GetFullPath(selectedDirectory))?.FullName;
+            }
+            catch (ArgumentException)
+            {
+                SetInternalInstallCheckStatus(M("Dynamic.UserdataUninstall.Status.PrepareWorkParentUnavailable", selectedDirectory));
+                return;
+            }
+            catch (NotSupportedException)
+            {
+                SetInternalInstallCheckStatus(M("Dynamic.UserdataUninstall.Status.PrepareWorkParentUnavailable", selectedDirectory));
+                return;
+            }
+            catch (IOException)
+            {
+                SetInternalInstallCheckStatus(M("Dynamic.UserdataUninstall.Status.PrepareWorkParentUnavailable", selectedDirectory));
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(derived)
+                || !Directory.Exists(derived)
+                || !IsInternalInstallBackupParentOutsideExisting(derived, selectedDirectory))
+            {
+                SetInternalInstallCheckStatus(M("Dynamic.UserdataUninstall.Status.PrepareWorkParentUnavailable", selectedDirectory));
+                return;
+            }
+
+            ApplyInternalInstallBackupParent(derived!);
+            parent = derived;
+        }
+        else if (string.IsNullOrWhiteSpace(parent) || !Directory.Exists(parent))
         {
             var dialog = new Microsoft.Win32.OpenFolderDialog
             {
@@ -139,7 +190,7 @@ public partial class MainWindow
                         return;
                     }
 
-                    var workRoot = Path.Combine(parent!, ".armada-installer-tools");
+                    var workRoot = Path.Combine(TemporaryWorkRoot, "tools");
                     var pendingTools = await EdlToolchain.LoadAsync(archive, workRoot, token);
                     EdlToolchain? ownedTools = pendingTools;
                     try
@@ -287,6 +338,17 @@ public partial class MainWindow
                 try
                 {
                     SetInternalInstallBackupStatus(M("Dynamic.InternalInstall.Backup.Reading"));
+
+                    // 卸载模式：真实 EDL 会话与首次 Sahara 证明已建立之后、正式读取之前，
+                    // 先用只读租约核对所选原始备份与实时设备一致；不一致则在 CreateAsync 之前拒绝。
+                    if (IsModernUserdataUninstallMode)
+                    {
+                        using var validation = await InternalInstallBackup.OpenOriginalGptForUninstallAsync(
+                            activeClient,
+                            _bootMaintenanceOriginalDirectory!,
+                            progress: null,
+                            token);
+                    }
 
                     var progress = new Progress<InternalBackupProgress>(report =>
                     {

@@ -120,6 +120,14 @@ class MacPrepareTests(unittest.TestCase):
             self.assertIn(f"<{prop}>", props)
         self.assertNotIn("BundledPlatformToolsArchive", props)
 
+    def test_props_forward_the_fetched_gbl_efi_files(self):
+        record, _ = self._prepare()
+        for prop, dl_id in (("BundledGblPrcEfi", "gblPrc"), ("BundledGblRowEfi", "gblRow")):
+            path = Path(record["inputs"][prop])
+            self.assertEqual(path.read_bytes(), f"{dl_id}\n".encode())
+            props = Path(record["propsPath"]).read_text(encoding="utf-8")
+            self.assertIn(f"<{prop}>{build_installer._xml_escape(str(path))}</{prop}>", props)
+
     def test_missing_macos_libusb_entry_fails(self):
         manifest = json.loads(self.manifest_path.read_text(encoding="utf-8"))
         for dl in manifest["downloads"]:

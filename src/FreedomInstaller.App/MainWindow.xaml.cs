@@ -173,6 +173,10 @@ public partial class MainWindow : Window
     protected override void OnClosed(EventArgs e)
     {
         _closed = true;
+        SaveWorkLogOnClose();
+        bool preserveWork = HasUnconfirmedBootMaintenanceWrite || HasUnknownBootMaintenanceReset
+            || HasUnresolvedModernUserdataUninstallState
+            || (HasInternalInstallExecutionStarted && !IsCompletedInternalInstallExecution);
 
         // 全局救援：只释放本页自有托管对象，不删除用户备份或证据目录。
         DisposeGlobalRecoveryOnClose();
@@ -228,6 +232,7 @@ public partial class MainWindow : Window
         // 释放本次导入拥有的 ZIP 解包目录；调用方原始的 ZIP / 目录不归本实例所有。
         DisposePreparedPackageOnClose();
 
+        CleanWorkFilesOnClose(preserveWork);
         base.OnClosed(e);
     }
 
@@ -427,7 +432,7 @@ public partial class MainWindow : Window
             return;
         }
 
-        // 卸载（现代四步向导）优先：与维护同构，来源页「下一步」是真实只读准备。
+        // 卸载向导优先：与维护同构，来源页「下一步」是真实只读准备。
         if (IsModernUserdataUninstallMode)
         {
             if (_internalInstallStep == 2)
@@ -436,7 +441,7 @@ public partial class MainWindow : Window
                 return;
             }
 
-            NavigateModernUserdataUninstallStep(_internalInstallStep + 1);
+            NavigateModernUserdataUninstallStep(NextModernUserdataUninstallStep(_internalInstallStep));
             return;
         }
 
@@ -496,10 +501,10 @@ public partial class MainWindow : Window
             return;
         }
 
-        // 卸载四步导航优先于维护：页码语义由卸载控制器解释。
+        // 卸载导航优先于维护：页码语义由卸载控制器解释。
         if (IsModernUserdataUninstallMode)
         {
-            NavigateModernUserdataUninstallStep(_internalInstallStep - 1);
+            NavigateModernUserdataUninstallStep(PreviousModernUserdataUninstallStep(_internalInstallStep));
             return;
         }
 
@@ -536,7 +541,7 @@ public partial class MainWindow : Window
     private void Navigate(int page)
     {
         // 内部存储安装有自己的四步导航；旧三页的页码语义在这里不再适用。
-        // 卸载四步导航优先转发：页码语义完全由卸载控制器解释。
+        // 卸载导航优先转发：页码语义完全由卸载控制器解释。
         if (IsModernUserdataUninstallMode)
         {
             NavigateModernUserdataUninstallStep(page);
@@ -2126,6 +2131,8 @@ public partial class MainWindow : Window
             && !HasProtectedUninstallState;
     }
 
+    private TaskCompletionSource? _activeWorkCompletion;
+
     private async Task RunBusyAsync(Func<CancellationToken, Task> work)
     {
         if (_busy)
@@ -2134,6 +2141,8 @@ public partial class MainWindow : Window
         }
 
         _busy = true;
+        var completion = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        _activeWorkCompletion = completion;
         using var cts = new CancellationTokenSource();
         _cts = cts;
         RefreshActions();
@@ -2156,8 +2165,16 @@ public partial class MainWindow : Window
         {
             _busy = false;
             _cts = null;
-            RefreshActions();
-            UpdateSummary();
+            try
+            {
+                RefreshActions();
+                UpdateSummary();
+            }
+            finally
+            {
+                _activeWorkCompletion = null;
+                completion.TrySetResult();
+            }
         }
     }
 

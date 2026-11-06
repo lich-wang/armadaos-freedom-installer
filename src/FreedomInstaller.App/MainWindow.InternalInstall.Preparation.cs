@@ -104,7 +104,7 @@ public partial class MainWindow
             package,
             assets,
             services,
-            evidenceParent,
+            TemporaryWorkRoot,
             cancellationToken);
 
         if (_closeRequested || _closed)
@@ -123,7 +123,7 @@ public partial class MainWindow
 
     /// <summary>
     /// 只在真实备份与检查都成立时解出两个内置本机工具。已经成功加载的工具会在同一次方案的只读工厂
-    /// 重试中复用，不重复拷贝或哈希；失败时只释放尚未保存的工具集与工具，解出的材料文件保留在用户目录供诊断。
+    /// 重试中复用，不重复拷贝或哈希；失败时释放尚未保存的工具集与工具；解出的材料在程序关闭时清理。
     /// </summary>
     private async Task EnsureInternalInstallAssetsAsync(
         string evidenceParent,
@@ -136,7 +136,7 @@ public partial class MainWindow
         }
 
         var materialDirectory = Path.Combine(
-            evidenceParent,
+            TemporaryWorkRoot,
             InternalInstallAssetsDirectoryName,
             Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(materialDirectory);
@@ -184,7 +184,7 @@ public partial class MainWindow
         }
         catch
         {
-            // 顺序与持有顺序相反；已解出的材料文件留在显式父目录下，不递归删除。
+            // 顺序与持有顺序相反；本次已解出的材料由窗口拥有的工作目录统一清理。
             pendingAssets?.Dispose();
             pendingTools?.Dispose();
             throw;
@@ -230,7 +230,7 @@ public partial class MainWindow
     }
 
     /// <summary>
-    /// 释放本工单持有的后端、直装工具集与本机工具：后端必须最先释放，本机工具最后释放。
+    /// 释放当前准备流程持有的后端、直装工具集与本机工具：后端必须最先释放，本机工具最后释放。
     /// 只有各自 Dispose 成功后才清空对应字段，异常不被吞掉，避免活动租约被悄悄丢掉。
     /// </summary>
     private void ReleaseInternalInstallPreparedBackend()

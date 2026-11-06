@@ -45,19 +45,21 @@ public sealed partial class EdlUninstallBackend
         EdlEntryResult binding,
         UninstallGptAssets assets,
         InternalBackupSet currentBackup,
-        CurrentBootMenuPlan menuPlan,
+        CurrentBootMenuPlan? menuPlan,
         string actualCurrentSlot,
         EdlUninstallCapture capture,
         string backupDirectory,
         List<FileStream> locks,
         List<PinnedFile> pinned,
-        CancellationToken token)
+        CancellationToken token,
+        BootMaintenancePrepared? stockRestore = null)
     {
         ArgumentNullException.ThrowIfNull(client);
         ArgumentNullException.ThrowIfNull(binding);
         ArgumentNullException.ThrowIfNull(assets);
         ArgumentNullException.ThrowIfNull(currentBackup);
-        ArgumentNullException.ThrowIfNull(menuPlan);
+        if ((menuPlan is null) == (stockRestore is null))
+            throw new ArgumentException("Exactly one boot plan is required.");
         ArgumentNullException.ThrowIfNull(capture);
         ArgumentNullException.ThrowIfNull(backupDirectory);
         ArgumentNullException.ThrowIfNull(locks);
@@ -71,7 +73,7 @@ public sealed partial class EdlUninstallBackend
                 "The reported current slot '" + actualCurrentSlot + "' is not exactly 'a' or 'b'.");
         }
 
-        if (menuPlan.IsDisposed)
+        if (menuPlan?.IsDisposed == true)
         {
             throw new InvalidOperationException("The current boot menu plan is already disposed.");
         }
@@ -95,7 +97,7 @@ public sealed partial class EdlUninstallBackend
         if (!Equals(binding, client.Binding) ||
             !Equals(binding, original.Binding) ||
             !Equals(binding, currentBackup.Binding) ||
-            !Equals(binding, menuPlan.Binding))
+            (menuPlan is not null && !Equals(binding, menuPlan.Binding)))
         {
             throw new InvalidOperationException(
                 "The uninstall binding does not equal the client, original, current and menu bindings.");
@@ -116,7 +118,7 @@ public sealed partial class EdlUninstallBackend
                 "The original GPT backup model/hardware does not match the trusted toolchain.");
         }
 
-        if (!string.Equals(menuPlan.BackupManifestSha256, currentBackup.ManifestSha256, StringComparison.OrdinalIgnoreCase))
+        if (menuPlan is not null && !string.Equals(menuPlan.BackupManifestSha256, currentBackup.ManifestSha256, StringComparison.OrdinalIgnoreCase))
         {
             throw new InvalidOperationException(
                 "The menu plan was prepared against a different backup manifest than the current backup set.");
@@ -248,21 +250,43 @@ public sealed partial class EdlUninstallBackend
         CompareTable(original.OriginalTable, reparsedOriginal, "reparsed original LUN0 GPT pair");
 
         // -----------------------------------------------------------------
-        // The misc control partition: the sole active-slot authority
+        // Verified current-slot authority: AOSP misc or Qualcomm GPT
         // -----------------------------------------------------------------
 
         EdlCapturedRegion miscRegion = RequireRegion(currentBackup, "misc");
-        var control = await BootSlotControl.ReadAsync(
-            new VerifiedEdlFile(miscRegion.FilePath, miscRegion.Length, miscRegion.Sha256),
-            token).ConfigureAwait(false);
+        CurrentBootSlotFacts control = await CurrentBootSlot
+            .ReadAsync(currentBackup, token)
+            .ConfigureAwait(false);
 
         if (!string.Equals(control.CurrentSlot, actualCurrentSlot, StringComparison.Ordinal) ||
-            !string.Equals(control.CurrentSlot, menuPlan.CurrentSlot, StringComparison.Ordinal))
+            !string.Equals(control.CurrentSlot, menuPlan?.CurrentSlot ?? stockRestore!.CurrentSlot, StringComparison.Ordinal))
         {
             throw new InvalidOperationException(
-                "The misc control slot '" + control.CurrentSlot +
+                "The verified current slot '" + control.CurrentSlot +
                 "' does not match the reported current slot '" + actualCurrentSlot +
-                "' and the menu plan slot '" + menuPlan.CurrentSlot + "'.");
+                "' and the menu plan slot '" + (menuPlan?.CurrentSlot ?? stockRestore!.CurrentSlot) + "'.");
+        }
+
+        if (menuPlan is null)
+        {
+            // Stock bytes are verified by BootMaintenanceBackend before preparation and again
+            // after partition reclamation. No project boot is repacked or written on this route.
+            string reportPath = Path.Combine(backupDirectory, "stock-restore-plan.json");
+            await File.WriteAllTextAsync(reportPath, JsonSerializer.Serialize(new
+            {
+                operation = "remove-linux-restore-stock-boot",
+                currentSlot = actualCurrentSlot,
+                originalManifestSha256 = original.ManifestSha256,
+                currentManifestSha256 = currentBackup.ManifestSha256,
+                stockConfirmationId = stockRestore!.ConfirmationId,
+                regions = stockRestore.Regions,
+            }), token).ConfigureAwait(false);
+            AddPinned(reportPath, "stock-restore:plan", locks, pinned);
+            var reportPin = pinned.Single(file => SamePath(file.Path, reportPath));
+            return new CurrentMenuEvidence(reportPin, actualCurrentSlot, original.DirectoryPath,
+                currentBackup.DirectoryPath, new VerifiedEdlFile(reportPath, new FileInfo(reportPath).Length, HashFile(reportPath)),
+                Array.Empty<CurrentMenuSlotFacts>(), Array.Empty<MenuWriteTarget>(), original.ManifestSha256, 0,
+                currentBackup.Geometries, currentBackup.Files);
         }
 
         // -----------------------------------------------------------------
@@ -527,7 +551,9 @@ public sealed partial class EdlUninstallBackend
             writer.WriteString("currentBackupManifestSha256", currentBackup.ManifestSha256);
             writer.WriteString("currentSlot", actualCurrentSlot);
             writer.WriteString("controlSha256", control.ControlSha256);
-            writer.WriteNumber("controlCrc32", control.Crc32);
+            writer.WriteString("slotAuthority", control.Source);
+            if (control.Crc32 is uint crc) writer.WriteNumber("controlCrc32", crc);
+            else writer.WriteNull("controlCrc32");
 
             writer.WriteStartArray("slots");
             foreach (CurrentMenuSlotFacts fact in slotFacts)
