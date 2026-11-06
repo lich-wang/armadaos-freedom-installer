@@ -186,6 +186,16 @@ namespace FreedomInstaller.Core.Tests
             Assert.Null(profile.Materials[0].ImageId);
         }
 
+        [Fact]
+        public void Only_tb710fu_keeps_the_avb_metadata_on_install()
+        {
+            Assert.Equal(EdlInstallBootTrust.Standard, EdlDeviceProfiles.FindByModel("TB322FC")!.InstallBootTrust);
+            Assert.Equal(EdlInstallBootTrust.Standard, EdlDeviceProfiles.FindByModel("TB323FU")!.InstallBootTrust);
+            Assert.Equal(
+                EdlInstallBootTrust.AospPreservedBoot,
+                EdlDeviceProfiles.FindByModel(Tb710fuModel)!.InstallBootTrust);
+        }
+
         // ---------------------------------------------------------------- lookup and immutability
 
         [Fact]

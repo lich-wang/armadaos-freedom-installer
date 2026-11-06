@@ -23,6 +23,16 @@ public static class DeviceProbe
     };
 
     /// <summary>
+    /// Consulted only when <see cref="ModelPropertyKeys"/> name no model at all. A TB710FU running a ported
+    /// Android (for example the HyperOS port, whose product properties are a Xiaomi model) still reports its
+    /// own model in the boot image properties. A device whose primary keys name a model is never affected.
+    /// </summary>
+    private static readonly string[] FallbackModelPropertyKeys =
+    {
+        "ro.product.bootimage.model",
+    };
+
+    /// <summary>
     /// Parses <c>adb devices</c> output into one entry per device line.
     /// <list type="bullet">
     /// <item>the "List of devices attached" header, blank lines and comment lines are not devices;</item>
@@ -184,6 +194,23 @@ public static class DeviceProbe
             return null;
         }
 
+        var reportedModels = ReportedModels(getpropOutput, ModelPropertyKeys);
+        if (reportedModels.Count == 0)
+        {
+            reportedModels = ReportedModels(getpropOutput, FallbackModelPropertyKeys);
+        }
+
+        if (reportedModels.Count != 1)
+        {
+            // No model claim at all, or several different claims: both are "not identified".
+            return null;
+        }
+
+        return TryCanonicalizeModel(reportedModels.Min!, out var canonical) ? canonical : null;
+    }
+
+    private static SortedSet<string> ReportedModels(string getpropOutput, string[] keys)
+    {
         // One entry per distinct model token actually reported by a model property.
         var reportedModels = new SortedSet<string>(StringComparer.OrdinalIgnoreCase);
 
@@ -194,7 +221,7 @@ public static class DeviceProbe
                 continue;
             }
 
-            if (!ModelPropertyKeys.Contains(key, StringComparer.OrdinalIgnoreCase))
+            if (!keys.Contains(key, StringComparer.OrdinalIgnoreCase))
             {
                 continue;
             }
@@ -209,13 +236,7 @@ public static class DeviceProbe
             reportedModels.Add(token);
         }
 
-        if (reportedModels.Count != 1)
-        {
-            // No model claim at all, or several different claims: both are "not identified".
-            return null;
-        }
-
-        return TryCanonicalizeModel(reportedModels.Min!, out var canonical) ? canonical : null;
+        return reportedModels;
     }
 
     /// <summary>

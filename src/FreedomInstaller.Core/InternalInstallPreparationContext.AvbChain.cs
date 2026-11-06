@@ -58,6 +58,10 @@ internal sealed partial class InternalInstallPreparationContext
 
     internal IReadOnlyList<DirectAvbMetadataNode> DirectAvbNodes => _directAvbNodes;
 
+    // Set only by the direct factory for a model on the AOSP-preserving route (no AVB metadata written): the
+    // original vbmeta roles that were authenticated, re-read by every original device capture.
+    private readonly IReadOnlyList<string>? _directPreservedAvbRoles;
+
     /// <summary>
     /// Decides the source slot of both fixed targets in <see cref="SlotOrder"/>, defaulting every target to
     /// itself. Only an opposite, non-current target whose actual boot header is all zero may buy the strict
@@ -457,7 +461,7 @@ internal sealed partial class InternalInstallPreparationContext
     {
         // The boot-only treatment is only ever the strict five-file proof's own verdict, never a comparison
         // this writer invents.
-        bool factoryEmpty = built.UsesInactiveSlotBackup;
+        bool factoryEmpty = built.UsesInactiveSlotBackup || _directPreservedAvbRoles is not null;
 
         List<DirectAvbMetadataNode> nodes = new();
         foreach (DirectAvbMetadataNode node in _directAvbNodes)

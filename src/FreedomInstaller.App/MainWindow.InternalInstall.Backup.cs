@@ -489,8 +489,8 @@ public partial class MainWindow
         // 或还没有随附工具归档时，一律停在安卓，不发设备命令，也不解包任何工具。
         var selectedIdentity = storedAndroid.Identity;
 
-        // 只开放识别与只读检查的型号（TB710FU）：安装备份属于安装路线，在进入 9008 之前停下。
-        if (DeviceModelRoutes.IsWriteRoutePending(selectedIdentity.Model))
+        // 当前模式的写入路线尚未开放的型号（TB710FU 的维护 / 卸载 / TF 卡）：在进入 9008 之前停下。
+        if (IsCurrentModeRoutePending(selectedIdentity.Model))
         {
             SetInternalInstallBackupStatus(
                 M("Dynamic.Model.RoutePending", Placeholder(selectedIdentity.Model)));

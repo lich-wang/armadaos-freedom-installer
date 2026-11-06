@@ -49,6 +49,23 @@ public static class DeviceModelRoutes
         }
     }
 
+    /// <summary>
+    /// True when the internal install route (device check, install backup, direct install) of
+    /// <paramref name="model"/> is not open. The TB710FU install route is open: it writes only boot and the new
+    /// Linux partitions and keeps the device's AVB metadata (see <c>DirectTrustMode.AospPreserved</c>).
+    /// Boot maintenance, uninstall and global restore stay behind <see cref="IsWriteRoutePending"/>.
+    /// </summary>
+    public static bool IsInstallRoutePending(string? model) => false;
+
+    /// <summary>Install-route counterpart of <see cref="RequireWriteRoute"/>.</summary>
+    public static void RequireInstallRoute(string? model)
+    {
+        if (IsInstallRoutePending(model))
+        {
+            RequireWriteRoute(model);
+        }
+    }
+
     /// <summary>True when <paramref name="exception"/> is the refusal thrown by <see cref="RequireWriteRoute"/>.</summary>
     public static bool IsRouteRefusal(Exception? exception) =>
         exception is InvalidOperationException

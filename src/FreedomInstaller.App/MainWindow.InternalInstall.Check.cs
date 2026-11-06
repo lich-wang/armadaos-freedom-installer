@@ -45,6 +45,15 @@ public partial class MainWindow
     /// 不表示任何组件已校验通过，也不表示允许写入。
     /// </para>
     /// </summary>
+    /// <summary>
+    /// 当前模式的写入路线是否尚未开放：内部安装只看安装路线；维护、卸载与 TF 卡安装共用同一检查与
+    /// 备份管线，但它们的写入路线另行开放，因此看 <see cref="DeviceModelRoutes.IsWriteRoutePending"/>。
+    /// </summary>
+    private bool IsCurrentModeRoutePending(string? model) =>
+        IsSharedNonInternalDeviceMode
+            ? DeviceModelRoutes.IsWriteRoutePending(model)
+            : DeviceModelRoutes.IsInstallRoutePending(model);
+
     private bool HasCheckedInternalInstallDevice
     {
         get
@@ -65,9 +74,9 @@ public partial class MainWindow
                 return false;
             }
 
-            // 只开放识别与只读检查的型号（TB710FU）不构成进入备份页的证据：安装写入路线尚未开放。
+            // 当前模式的写入路线尚未开放的型号（TB710FU 的维护 / 卸载 / TF 卡）不构成进入备份页的证据。
             return !string.IsNullOrWhiteSpace(identity.Model)
-                && !DeviceModelRoutes.IsWriteRoutePending(identity.Model)
+                && !IsCurrentModeRoutePending(identity.Model)
                 && !string.IsNullOrWhiteSpace(identity.Serial)
                 && !string.IsNullOrWhiteSpace(identity.Firmware?.DisplayId)
                 && !string.IsNullOrWhiteSpace(android.SocSerial);
@@ -619,8 +628,8 @@ public partial class MainWindow
             return;
         }
 
-        // 检查本身通过，但该型号只开放识别与只读检查：如实说明，备份门槛保持关闭。
-        if (DeviceModelRoutes.IsWriteRoutePending(identity?.Model))
+        // 检查本身通过，但该型号在当前模式下的写入路线尚未开放：如实说明，备份门槛保持关闭。
+        if (IsCurrentModeRoutePending(identity?.Model))
         {
             SetText(InternalInstallRouteText, "Dynamic.InternalInstall.Check.RouteUnavailable");
             SetInternalInstallCheckStatus(M("Dynamic.Model.RoutePending", Placeholder(identity?.Model)));

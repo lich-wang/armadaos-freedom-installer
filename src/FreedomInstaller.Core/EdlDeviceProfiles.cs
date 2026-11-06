@@ -11,6 +11,20 @@ public enum EdlLoaderKind
     SaharaXml
 }
 
+/// <summary>How the internal install trusts and signs the new boot of a model.</summary>
+public enum EdlInstallBootTrust
+{
+    /// <summary>The install picks the GBL or the AOSP-resigned route from the device's own chain.</summary>
+    Standard,
+
+    /// <summary>
+    /// Only the boot candidates are written, signed with the AOSP test key; the device's vbmeta, vbmeta_system
+    /// and recovery stay as they are. Requires that every source slot's root vbmeta is signed by the AOSP key
+    /// and chains boot to it (a locked bootloader with an AOSP-test-key root).
+    /// </summary>
+    AospPreservedBoot
+}
+
 /// <summary>
 /// One reviewed loader payload of a trusted EDL profile. Metadata only: nothing here is read from,
 /// staged into or uploaded to a device.
@@ -63,7 +77,8 @@ public sealed class EdlDeviceProfile
         string loaderEntryPath,
         IReadOnlyList<EdlLoaderMaterial> materials,
         string? archiveLogicalName,
-        bool isComplete)
+        bool isComplete,
+        EdlInstallBootTrust installBootTrust = EdlInstallBootTrust.Standard)
     {
         ProfileId = profileId;
         Model = model;
@@ -75,6 +90,7 @@ public sealed class EdlDeviceProfile
         Materials = materials;
         ArchiveLogicalName = archiveLogicalName;
         IsComplete = isComplete;
+        InstallBootTrust = installBootTrust;
     }
 
     public string ProfileId { get; }
@@ -111,6 +127,9 @@ public sealed class EdlDeviceProfile
     /// statement that any device, loader or Firehose session exists.
     /// </summary>
     public bool IsComplete { get; }
+
+    /// <summary>The boot trust and signing policy of this model's internal install.</summary>
+    public EdlInstallBootTrust InstallBootTrust { get; }
 
     /// <summary>
     /// True only for a complete profile whose canonical model matches exactly and whose device reports a
@@ -252,9 +271,10 @@ public static class EdlDeviceProfiles
     /// The TB710FU (Lenovo Xiaoxin Pad Pro GT, SM8650) profile: one Firehose loader, the
     /// <c>xbl_s_devprg_ns.melf</c> of the ZUXOS 1.5.04.495 no-unlock supplement, staged as image 13.
     /// <see cref="EdlDeviceProfile.IsComplete"/> again describes the static identity and loader pin only.
-    /// Being registered here enables identification, the 9008 tool profile and read-only work; the install,
-    /// boot maintenance, uninstall and global restore write routes of this model stay closed through
-    /// <see cref="DeviceModelRoutes"/>.
+    /// Being registered here enables identification, the 9008 tool profile and read-only work. Of the write
+    /// routes only the internal install is open (see <see cref="DeviceModelRoutes"/>), and it uses
+    /// <see cref="EdlInstallBootTrust.AospPreservedBoot"/>: the locked ZUXOS 495 boot chain has an AOSP-test-key
+    /// root vbmeta but an RSA2048 vbmeta_system chain, so only boot is re-signed and the AVB metadata is kept.
     /// </summary>
     private static EdlDeviceProfile Tb710fu { get; } = new EdlDeviceProfile(
         "tb710fu-9008-495",
@@ -272,7 +292,8 @@ public static class EdlDeviceProfiles
                 1573224L,
                 "ad4689b1c52458250d46829ee46a89ec974e69f8e82eee8d4950427919e0b9eb")),
         "FreedomInstaller.EdlTools.TB710FU.zip",
-        isComplete: true);
+        isComplete: true,
+        installBootTrust: EdlInstallBootTrust.AospPreservedBoot);
 
     /// <summary>The supported models, in the frozen order, as a read-only list.</summary>
     public static IReadOnlyList<string> Models { get; } = Immutable("TB322FC", "TB323FU", "TB710FU");

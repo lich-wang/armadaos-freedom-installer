@@ -130,9 +130,12 @@ public sealed partial class InternalInstallBackend
 
             var expectedAvbTargets = new List<(string Slot, string Role)>();
 
+            // The AOSP-preserving route keeps every original AVB metadata partition: no node is expected.
+            bool preserved = _context.DirectBootTrustMode == InternalInstallBootTrustMode.AospPreserved;
+
             foreach (string slot in avbSlotOrder)
             {
-                if (_context.DirectBoots[slot].UsesInactiveSlotBackup)
+                if (preserved || _context.DirectBoots[slot].UsesInactiveSlotBackup)
                 {
                     continue;
                 }
