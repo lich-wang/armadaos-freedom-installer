@@ -146,6 +146,43 @@ class PackageTests(unittest.TestCase):
     def test_roundtrip_g4(self) -> None:
         self._roundtrip("tb322fc", edl.G4_PROFILE)
 
+    def _macos_args(self, with_pins: bool) -> argparse.Namespace:
+        common = _common_fixtures(self.root)
+        common.pop("python")
+        materials = _material_fixtures(self.root, edl.G4_PROFILE)
+        args = _args(common, self.out, "tb322fc", firehose=materials["firehose"], platform="macos-arm64")
+        self._material_pins = _patched_pins(materials, edl.G4_PROFILE)
+        if with_pins:
+            with open(common["client"], "rb") as handle:
+                client = handle.read()
+            pins_path = os.path.join(self.root, "tool-pins.json")
+            with open(pins_path, "w", encoding="utf-8") as handle:
+                json.dump({"schemaVersion": 1, "tools": {"client": {"bytes": len(client), "sha256": _sha(client)}}}, handle)
+            args.build_pins_json = pins_path
+        else:
+            args.build_pins_json = None
+        return args
+
+    def test_macos_requires_build_pins(self) -> None:
+        args = self._macos_args(with_pins=False)
+        with self.assertRaises(edl.PackagingError) as ctx:
+            edl.package(args)
+        self.assertIn("--build-pins-json", str(ctx.exception))
+        self.assertFalse(os.path.exists(self.out))
+
+    def test_macos_roundtrip_has_no_python_and_names_the_platform(self) -> None:
+        args = self._macos_args(with_pins=True)
+        new_profile = _replace_profile_pins(edl.G4_PROFILE, self._material_pins)
+        with mock.patch.dict(edl.G4_PROFILE, new_profile, clear=True):
+            edl.package(args)
+        with zipfile.ZipFile(self.out) as archive:
+            names = archive.namelist()
+            manifest = json.loads(archive.read("manifest.json"))
+        self.assertEqual(manifest["platform"], "macos-arm64")
+        self.assertIn("tools/edl-ng", names)
+        self.assertIn("tools/libusb-1.0.dylib", names)
+        self.assertFalse(any(name.startswith("python/") for name in names))
+
     def test_roundtrip_g5(self) -> None:
         self._roundtrip("tb323fu", edl.G5_PROFILE)
 

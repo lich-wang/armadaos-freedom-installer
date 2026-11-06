@@ -22,6 +22,8 @@
 
 TF 卡安装暂不开放。Windows 安装器不再携带旧 Linux 维护工具包，内部安装使用 9008 直接写入分区镜像。
 
+另有 macOS（Apple 芯片）版：界面、文字与 Windows 版相同，目前只提供“安装到内部存储”，其余功能卡片保留但不可用。9008 通过 libusb 直接访问，不需要安装驱动；adb 使用本机已安装的 platform-tools（例如 Homebrew 的 `android-platform-tools`）。构建方法见[从源码构建](docs/build.md#macos-版)。
+
 ## 内部安装
 
 1. **检查平板**：读取型号、固件、连接与引导状态，按所选路线完成必要检查。

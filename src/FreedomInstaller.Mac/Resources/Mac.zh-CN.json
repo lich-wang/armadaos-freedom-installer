@@ -1,0 +1,23 @@
+{
+  "Static.Title": "ArmadaOS Freedom 安装助手 0.7.6（macOS）",
+  "Static.Environment.Title": "运行环境准备",
+  "Static.Environment.Lead": "先检查这台 Mac，准备完成后再选择功能。",
+  "Static.Environment.System": "macOS 系统",
+  "Static.Environment.Driver": "9008 连接",
+  "Static.Environment.Guide": "当前无需连接平板。之后请用数据线把平板接到这台 Mac。",
+  "Static.Environment.HomeLink": "运行环境",
+  "Static.Mac.WindowsOnly": "目前只在 Windows 版提供",
+  "Dynamic.Mac.Environment.SystemReady": "支持当前 macOS {0}（{1}）。",
+  "Dynamic.Mac.Environment.SystemUnsupported": "当前系统不受支持，需要 Apple 芯片的 macOS 12 或更高版本。",
+  "Dynamic.Mac.Environment.ToolsReady": "连接工具已准备：adb {0}；9008 工具 {1}；boot 打包工具 {2}。",
+  "Dynamic.Mac.Environment.ToolsMissing": "缺少连接工具：{0}。adb 可用 Homebrew 安装（brew install android-platform-tools）。",
+  "Dynamic.Mac.Environment.DriverReady": "macOS 通过 libusb 直接访问 9008 设备，不需要安装驱动。",
+  "Dynamic.Mac.Environment.Bundled": "内置",
+  "Dynamic.Mac.Environment.Missing": "未找到",
+  "Dynamic.Mac.Dialog.Yes": "是",
+  "Dynamic.Mac.Dialog.No": "否",
+  "Dynamic.Mac.Dialog.Ok": "好",
+  "Dynamic.Mac.Check.InEdl": "平板现在在 9008 模式（SN:{0}），没有 adb。第 1 步要从 Android 读取锁定状态和槽位，请先让平板回到 Android（长按电源键约 15 秒重启），再点“检查平板”。如果第 1 步之前已经通过，可以直接到第 2 步继续备份。",
+  "Dynamic.Mac.Backup.AlreadyInEdl": "平板已在 9008，正在用 USB 序列号核对是否为第 1 步检查过的平板（SoC 序列号 {0}）…",
+  "Dynamic.Mac.Backup.AlreadyInEdlLog": "平板已在 9008，USB 序列号 {0} 与第 1 步读到的 SoC 序列号一致，直接备份。"
+}

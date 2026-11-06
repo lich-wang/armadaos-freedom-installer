@@ -1,0 +1,23 @@
+{
+  "Static.Title": "ArmadaOS Freedom Installer 0.7.6 (macOS)",
+  "Static.Environment.Title": "Environment check",
+  "Static.Environment.Lead": "Check this Mac first, then choose an operation.",
+  "Static.Environment.System": "macOS",
+  "Static.Environment.Driver": "9008 connection",
+  "Static.Environment.Guide": "No tablet is needed yet. Later, connect the tablet to this Mac with a USB cable.",
+  "Static.Environment.HomeLink": "Environment",
+  "Static.Mac.WindowsOnly": "Windows version only for now",
+  "Dynamic.Mac.Environment.SystemReady": "macOS {0} ({1}) is supported.",
+  "Dynamic.Mac.Environment.SystemUnsupported": "This system is not supported. macOS 12 or later on Apple silicon is required.",
+  "Dynamic.Mac.Environment.ToolsReady": "Connection tools ready: adb {0}; 9008 tools {1}; boot packers {2}.",
+  "Dynamic.Mac.Environment.ToolsMissing": "Missing connection tools: {0}. adb can be installed with Homebrew (brew install android-platform-tools).",
+  "Dynamic.Mac.Environment.DriverReady": "macOS reaches 9008 devices directly through libusb; no driver is needed.",
+  "Dynamic.Mac.Environment.Bundled": "bundled",
+  "Dynamic.Mac.Environment.Missing": "not found",
+  "Dynamic.Mac.Dialog.Yes": "Yes",
+  "Dynamic.Mac.Dialog.No": "No",
+  "Dynamic.Mac.Dialog.Ok": "OK",
+  "Dynamic.Mac.Check.InEdl": "The tablet is in 9008 mode (SN:{0}) and has no adb. Step 1 reads the lock state and slot from Android, so restart the tablet into Android first (hold the power key for about 15 seconds), then click “Check tablet” again. If step 1 already passed, you can go on with the backup in step 2.",
+  "Dynamic.Mac.Backup.AlreadyInEdl": "The tablet is already in 9008; checking its USB serial against the tablet from step 1 (SoC serial {0})…",
+  "Dynamic.Mac.Backup.AlreadyInEdlLog": "The tablet is already in 9008 and its USB serial {0} matches the SoC serial read in step 1; backing up directly."
+}

@@ -23,6 +23,16 @@ python3 -B maintenance/build_installer.py --work-dir /work/build --output-dir /w
 
 工作目录和输出目录应使用绝对路径。编译产物、缓存和日志不应提交到源码仓库。
 
+## macOS 版
+
+在 Apple 芯片的 Mac 上安装 .NET SDK 10 和 Xcode 命令行工具（`xcode-select --install`），在仓库根目录运行：
+
+```sh
+python3 -B maintenance/build_installer_macos.py --work-dir "$PWD/artifacts/build-macos" --output-dir "$PWD/artifacts/publish-macos"
+```
+
+产物为 `artifacts/publish-macos/ArmadaOS Freedom Installer.app`，未签名、未公证，首次打开时需在“系统设置 → 隐私与安全性”中确认。脚本复用 Windows 构建的清单、厂商文件与下载校验：edl-ng 编译为 osx-arm64，打包工具用 `tools/build-boot-packers-macos.sh` 编为通用二进制，libusb 取自同一个已固定哈希的 LibUsbDotNet 包中的 `runtimes/osx-arm64/native/libusb-1.0.dylib`，再按本次产物生成固定哈希，用 `package_edl.py --platform macos-arm64` 制作各型号 9008 工具包（不含 Python）。
+
 ## 构建流程
 
 1. 校验仓库内的厂商加载器、驱动及 AOSP 公开测试素材。

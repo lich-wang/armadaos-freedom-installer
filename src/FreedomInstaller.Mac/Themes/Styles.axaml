@@ -1,0 +1,470 @@
+<!--
+    Avalonia 版的界面样式，逐条对应 FreedomInstaller.App/MainWindow.xaml 的 Window.Resources：
+    同样的字号、圆角、内边距，颜色全部走 DynamicResource（Themes/Light.axaml、Dark.axaml），
+    所以浅色 / 深色切换与 Windows 版一致。WPF 的 Style 键在这里是同名 ControlTheme（按钮、复选框、
+    步骤导航、输入框）或同名 Class（文字与容器）。
+-->
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <Styles.Resources>
+        <ResourceDictionary>
+
+            <!-- ===== 按钮 ===== -->
+            <ControlTheme x:Key="PrimaryButton" TargetType="Button">
+                <Setter Property="Background" Value="{DynamicResource AccentBrush}" />
+                <Setter Property="Foreground" Value="{DynamicResource AccentInkBrush}" />
+                <Setter Property="FontSize" Value="14" />
+                <Setter Property="FontWeight" Value="SemiBold" />
+                <Setter Property="Padding" Value="22,10" />
+                <Setter Property="Cursor" Value="Hand" />
+                <Setter Property="Template">
+                    <ControlTemplate>
+                        <Border Name="Chrome"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="Transparent"
+                                BorderThickness="2"
+                                CornerRadius="11"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter Name="PART_ContentPresenter"
+                                              Content="{TemplateBinding Content}"
+                                              ContentTemplate="{TemplateBinding ContentTemplate}"
+                                              Foreground="{TemplateBinding Foreground}"
+                                              HorizontalAlignment="Center"
+                                              VerticalAlignment="Center" />
+                        </Border>
+                    </ControlTemplate>
+                </Setter>
+                <Style Selector="^:pointerover /template/ Border#Chrome">
+                    <Setter Property="Background" Value="{DynamicResource AccentHoverBrush}" />
+                </Style>
+                <Style Selector="^:pressed /template/ Border#Chrome">
+                    <Setter Property="Opacity" Value="0.88" />
+                </Style>
+                <Style Selector="^:focus-visible /template/ Border#Chrome">
+                    <Setter Property="BorderBrush" Value="{DynamicResource FocusBrush}" />
+                </Style>
+                <Style Selector="^:disabled">
+                    <Setter Property="Foreground" Value="{DynamicResource MutedBrush}" />
+                    <Setter Property="Cursor" Value="Arrow" />
+                </Style>
+                <Style Selector="^:disabled /template/ Border#Chrome">
+                    <Setter Property="Background" Value="{DynamicResource SurfaceAltBrush}" />
+                    <Setter Property="BorderBrush" Value="{DynamicResource StrokeBrush}" />
+                </Style>
+            </ControlTheme>
+
+            <ControlTheme x:Key="SecondaryButton" TargetType="Button">
+                <Setter Property="Background" Value="{DynamicResource SurfaceAltBrush}" />
+                <Setter Property="Foreground" Value="{DynamicResource InkBrush}" />
+                <Setter Property="BorderBrush" Value="{DynamicResource StrokeBrush}" />
+                <Setter Property="BorderThickness" Value="1" />
+                <Setter Property="FontSize" Value="14" />
+                <Setter Property="Padding" Value="18,9" />
+                <Setter Property="Cursor" Value="Hand" />
+                <Setter Property="Template">
+                    <ControlTemplate>
+                        <Border Name="Chrome"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="11"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter Name="PART_ContentPresenter"
+                                              Content="{TemplateBinding Content}"
+                                              ContentTemplate="{TemplateBinding ContentTemplate}"
+                                              Foreground="{TemplateBinding Foreground}"
+                                              HorizontalAlignment="Center"
+                                              VerticalAlignment="Center" />
+                        </Border>
+                    </ControlTemplate>
+                </Setter>
+                <Style Selector="^:pointerover /template/ Border#Chrome">
+                    <Setter Property="Background" Value="{DynamicResource HoverBrush}" />
+                    <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
+                </Style>
+                <Style Selector="^:focus-visible /template/ Border#Chrome">
+                    <Setter Property="BorderBrush" Value="{DynamicResource FocusBrush}" />
+                    <Setter Property="BorderThickness" Value="2" />
+                </Style>
+                <Style Selector="^:disabled">
+                    <Setter Property="Foreground" Value="{DynamicResource MutedBrush}" />
+                    <Setter Property="Cursor" Value="Arrow" />
+                </Style>
+                <Style Selector="^:disabled /template/ Border#Chrome">
+                    <Setter Property="Background" Value="{DynamicResource SurfaceAltBrush}" />
+                    <Setter Property="BorderBrush" Value="{DynamicResource StrokeBrush}" />
+                    <Setter Property="Opacity" Value="0.55" />
+                </Style>
+            </ControlTheme>
+
+            <ControlTheme x:Key="GhostButton" TargetType="Button">
+                <Setter Property="Background" Value="Transparent" />
+                <Setter Property="Foreground" Value="{DynamicResource AccentBrush}" />
+                <Setter Property="FontSize" Value="13" />
+                <Setter Property="Padding" Value="10,6" />
+                <Setter Property="Cursor" Value="Hand" />
+                <Setter Property="HorizontalContentAlignment" Value="Left" />
+                <Setter Property="Template">
+                    <ControlTemplate>
+                        <Border Name="Chrome"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="Transparent"
+                                BorderThickness="1"
+                                CornerRadius="8"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter Name="PART_ContentPresenter"
+                                              Content="{TemplateBinding Content}"
+                                              ContentTemplate="{TemplateBinding ContentTemplate}"
+                                              Foreground="{TemplateBinding Foreground}"
+                                              HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                              VerticalAlignment="Center" />
+                        </Border>
+                    </ControlTemplate>
+                </Setter>
+                <Style Selector="^:pointerover /template/ Border#Chrome">
+                    <Setter Property="Background" Value="{DynamicResource AccentSoftBrush}" />
+                </Style>
+                <Style Selector="^:focus-visible /template/ Border#Chrome">
+                    <Setter Property="BorderBrush" Value="{DynamicResource FocusBrush}" />
+                </Style>
+                <Style Selector="^:disabled">
+                    <Setter Property="Foreground" Value="{DynamicResource MutedBrush}" />
+                </Style>
+            </ControlTheme>
+
+            <!-- ===== 首页功能卡片 ===== -->
+            <ControlTheme x:Key="FunctionCard" TargetType="Button">
+                <Setter Property="Background" Value="{DynamicResource SurfaceBrush}" />
+                <Setter Property="Foreground" Value="{DynamicResource InkBrush}" />
+                <Setter Property="Padding" Value="16" />
+                <Setter Property="MinHeight" Value="106" />
+                <Setter Property="Cursor" Value="Hand" />
+                <Setter Property="HorizontalAlignment" Value="Stretch" />
+                <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                <Setter Property="VerticalContentAlignment" Value="Top" />
+                <Setter Property="Template">
+                    <ControlTemplate>
+                        <Border Name="CardChrome"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{DynamicResource StrokeBrush}"
+                                BorderThickness="1"
+                                CornerRadius="14"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter Name="PART_ContentPresenter"
+                                              Content="{TemplateBinding Content}"
+                                              HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                              VerticalAlignment="{TemplateBinding VerticalContentAlignment}" />
+                        </Border>
+                    </ControlTemplate>
+                </Setter>
+                <Style Selector="^:pointerover /template/ Border#CardChrome">
+                    <Setter Property="Background" Value="{DynamicResource HoverBrush}" />
+                    <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
+                </Style>
+                <Style Selector="^:focus-visible /template/ Border#CardChrome">
+                    <Setter Property="BorderBrush" Value="{DynamicResource FocusBrush}" />
+                    <Setter Property="BorderThickness" Value="2" />
+                </Style>
+                <Style Selector="^:pressed /template/ Border#CardChrome">
+                    <Setter Property="Opacity" Value="0.9" />
+                </Style>
+                <Style Selector="^:disabled">
+                    <Setter Property="Cursor" Value="Arrow" />
+                </Style>
+                <Style Selector="^:disabled /template/ Border#CardChrome">
+                    <Setter Property="Opacity" Value="0.55" />
+                </Style>
+            </ControlTheme>
+
+            <!-- ===== 左侧步骤导航 ===== -->
+            <ControlTheme x:Key="StepNavItem" TargetType="RadioButton">
+                <Setter Property="Foreground" Value="{DynamicResource MutedBrush}" />
+                <Setter Property="Cursor" Value="Hand" />
+                <Setter Property="HorizontalAlignment" Value="Stretch" />
+                <Setter Property="Template">
+                    <ControlTemplate>
+                        <Border Name="Chrome"
+                                Background="Transparent"
+                                BorderBrush="Transparent"
+                                BorderThickness="2"
+                                CornerRadius="11"
+                                Padding="8,8"
+                                Margin="0,0,0,6">
+                            <Grid ColumnDefinitions="Auto,*">
+                                <Border Name="Marker"
+                                        Grid.Column="0"
+                                        Width="3"
+                                        CornerRadius="1.5"
+                                        Background="Transparent"
+                                        Margin="0,2,10,2" />
+                                <ContentPresenter Grid.Column="1"
+                                                  Content="{TemplateBinding Content}"
+                                                  Foreground="{TemplateBinding Foreground}"
+                                                  VerticalAlignment="Center" />
+                            </Grid>
+                        </Border>
+                    </ControlTemplate>
+                </Setter>
+                <Style Selector="^:pointerover /template/ Border#Chrome">
+                    <Setter Property="Background" Value="{DynamicResource HoverBrush}" />
+                </Style>
+                <Style Selector="^:focus-visible /template/ Border#Chrome">
+                    <Setter Property="BorderBrush" Value="{DynamicResource FocusBrush}" />
+                </Style>
+                <Style Selector="^:checked">
+                    <Setter Property="Foreground" Value="{DynamicResource InkBrush}" />
+                </Style>
+                <Style Selector="^:checked /template/ Border#Chrome">
+                    <Setter Property="Background" Value="{DynamicResource SelectedBrush}" />
+                </Style>
+                <Style Selector="^:checked /template/ Border#Marker">
+                    <Setter Property="Background" Value="{DynamicResource AccentBrush}" />
+                </Style>
+                <Style Selector="^:disabled">
+                    <Setter Property="Opacity" Value="0.4" />
+                </Style>
+            </ControlTheme>
+
+            <!-- ===== 风险确认复选框 ===== -->
+            <ControlTheme x:Key="RiskCheckBox" TargetType="CheckBox">
+                <Setter Property="Foreground" Value="{DynamicResource InkBrush}" />
+                <Setter Property="FontSize" Value="13" />
+                <Setter Property="Cursor" Value="Hand" />
+                <Setter Property="Template">
+                    <ControlTemplate>
+                        <Grid Background="Transparent" ColumnDefinitions="Auto,*">
+                            <Border Name="Box"
+                                    Grid.Column="0"
+                                    Width="18"
+                                    Height="18"
+                                    CornerRadius="5"
+                                    Background="{DynamicResource SurfaceAltBrush}"
+                                    BorderBrush="{DynamicResource StrokeBrush}"
+                                    BorderThickness="1"
+                                    VerticalAlignment="Top"
+                                    Margin="0,2,10,0">
+                                <Path Name="Mark"
+                                      Data="M 0 4 L 3 7 L 9 0"
+                                      Stroke="{DynamicResource AccentInkBrush}"
+                                      StrokeThickness="2"
+                                      HorizontalAlignment="Center"
+                                      VerticalAlignment="Center"
+                                      IsVisible="False" />
+                            </Border>
+                            <ContentPresenter Grid.Column="1"
+                                              Content="{TemplateBinding Content}"
+                                              Foreground="{TemplateBinding Foreground}"
+                                              VerticalAlignment="Center" />
+                        </Grid>
+                    </ControlTemplate>
+                </Setter>
+                <Style Selector="^:pointerover /template/ Border#Box">
+                    <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
+                </Style>
+                <Style Selector="^:focus-visible /template/ Border#Box">
+                    <Setter Property="BorderBrush" Value="{DynamicResource FocusBrush}" />
+                </Style>
+                <Style Selector="^:disabled">
+                    <Setter Property="Opacity" Value="0.5" />
+                </Style>
+                <Style Selector="^:checked /template/ Border#Box">
+                    <Setter Property="Background" Value="{DynamicResource AccentBrush}" />
+                    <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
+                </Style>
+                <Style Selector="^:checked /template/ Path#Mark">
+                    <Setter Property="IsVisible" Value="True" />
+                </Style>
+            </ControlTheme>
+
+            <!-- ===== 可折叠分组：与 WPF 的 SectionExpander 一样，左侧箭头 + 标题，展开时箭头转 90° ===== -->
+            <ControlTheme x:Key="SectionExpanderHeader" TargetType="ToggleButton">
+                <Setter Property="Foreground" Value="{DynamicResource InkBrush}" />
+                <Setter Property="Cursor" Value="Hand" />
+                <Setter Property="Focusable" Value="False" />
+                <Setter Property="HorizontalAlignment" Value="Stretch" />
+                <Setter Property="Template">
+                    <ControlTemplate>
+                        <Border Name="HeaderChrome"
+                                Background="Transparent"
+                                BorderBrush="Transparent"
+                                BorderThickness="1"
+                                CornerRadius="8"
+                                Padding="2,4">
+                            <StackPanel Orientation="Horizontal">
+                                <Path Name="Arrow"
+                                      Data="M 0 0 L 5 5 L 0 10"
+                                      Stroke="{DynamicResource AccentBrush}"
+                                      StrokeThickness="1.8"
+                                      VerticalAlignment="Center"
+                                      Margin="0,0,8,0" />
+                                <ContentPresenter Content="{TemplateBinding Content}"
+                                                  Foreground="{TemplateBinding Foreground}"
+                                                  VerticalAlignment="Center" />
+                            </StackPanel>
+                        </Border>
+                    </ControlTemplate>
+                </Setter>
+                <Style Selector="^:pointerover /template/ Border#HeaderChrome">
+                    <Setter Property="Background" Value="{DynamicResource HoverBrush}" />
+                </Style>
+                <Style Selector="^:checked /template/ Path#Arrow">
+                    <Setter Property="RenderTransform" Value="rotate(90deg)" />
+                </Style>
+            </ControlTheme>
+
+            <ControlTheme x:Key="SectionExpander" TargetType="Expander">
+                <Setter Property="Foreground" Value="{DynamicResource InkBrush}" />
+                <Setter Property="Margin" Value="0,14,0,0" />
+                <Setter Property="HorizontalAlignment" Value="Stretch" />
+                <Setter Property="Template">
+                    <ControlTemplate>
+                        <StackPanel>
+                            <ToggleButton Name="PART_ToggleButton"
+                                          Theme="{StaticResource SectionExpanderHeader}"
+                                          Content="{TemplateBinding Header}"
+                                          IsChecked="{TemplateBinding IsExpanded, Mode=TwoWay}" />
+                            <ContentPresenter Name="PART_ContentPresenter"
+                                              Content="{TemplateBinding Content}"
+                                              IsVisible="{TemplateBinding IsExpanded}"
+                                              Margin="0,4,0,0" />
+                        </StackPanel>
+                    </ControlTemplate>
+                </Setter>
+            </ControlTheme>
+
+            <!-- ===== 输入框 ===== -->
+            <ControlTheme x:Key="InputTextBox" TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
+                <Setter Property="Background" Value="{DynamicResource SurfaceAltBrush}" />
+                <Setter Property="Foreground" Value="{DynamicResource InkBrush}" />
+                <Setter Property="BorderBrush" Value="{DynamicResource StrokeBrush}" />
+                <Setter Property="BorderThickness" Value="1" />
+                <Setter Property="CaretBrush" Value="{DynamicResource InkBrush}" />
+                <Setter Property="SelectionBrush" Value="{DynamicResource SelectedBrush}" />
+                <Setter Property="Padding" Value="10,8" />
+                <Setter Property="FontSize" Value="13" />
+                <Setter Property="CornerRadius" Value="10" />
+                <Setter Property="VerticalContentAlignment" Value="Center" />
+                <Style Selector="^:pointerover /template/ Border#PART_BorderElement">
+                    <Setter Property="Background" Value="{DynamicResource SurfaceAltBrush}" />
+                    <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
+                </Style>
+                <Style Selector="^:pointerover">
+                    <Setter Property="Foreground" Value="{DynamicResource InkBrush}" />
+                </Style>
+                <Style Selector="^:focus /template/ Border#PART_BorderElement">
+                    <Setter Property="Background" Value="{DynamicResource SurfaceAltBrush}" />
+                    <Setter Property="BorderBrush" Value="{DynamicResource FocusBrush}" />
+                    <Setter Property="BorderThickness" Value="2" />
+                </Style>
+                <Style Selector="^:focus">
+                    <Setter Property="Foreground" Value="{DynamicResource InkBrush}" />
+                </Style>
+                <Style Selector="^:disabled /template/ Border#PART_BorderElement">
+                    <Setter Property="Background" Value="{DynamicResource SurfaceAltBrush}" />
+                    <Setter Property="BorderBrush" Value="{DynamicResource StrokeBrush}" />
+                </Style>
+                <Style Selector="^:disabled">
+                    <Setter Property="Foreground" Value="{DynamicResource MutedBrush}" />
+                    <Setter Property="Opacity" Value="0.8" />
+                </Style>
+            </ControlTheme>
+
+        </ResourceDictionary>
+    </Styles.Resources>
+
+    <!-- ===== 文字（WPF 的 H1Text / H2Text / BodyText … 对应同名 Class） ===== -->
+    <Style Selector="TextBlock.H1Text">
+        <Setter Property="FontSize" Value="28" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="Foreground" Value="{DynamicResource InkBrush}" />
+        <Setter Property="TextWrapping" Value="Wrap" />
+    </Style>
+    <Style Selector="TextBlock.H2Text">
+        <Setter Property="FontSize" Value="17" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="Foreground" Value="{DynamicResource InkBrush}" />
+        <Setter Property="TextWrapping" Value="Wrap" />
+    </Style>
+    <Style Selector="TextBlock.BodyText">
+        <Setter Property="FontSize" Value="14" />
+        <Setter Property="Foreground" Value="{DynamicResource MutedBrush}" />
+        <Setter Property="TextWrapping" Value="Wrap" />
+    </Style>
+    <Style Selector="TextBlock.BodyInkText">
+        <Setter Property="FontSize" Value="14" />
+        <Setter Property="Foreground" Value="{DynamicResource InkBrush}" />
+        <Setter Property="TextWrapping" Value="Wrap" />
+    </Style>
+    <Style Selector="TextBlock.CaptionText">
+        <Setter Property="FontSize" Value="12" />
+        <Setter Property="Foreground" Value="{DynamicResource MutedBrush}" />
+        <Setter Property="TextWrapping" Value="Wrap" />
+    </Style>
+    <Style Selector="TextBlock.FieldLabelText">
+        <Setter Property="FontSize" Value="12" />
+        <Setter Property="Foreground" Value="{DynamicResource MutedBrush}" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+        <Setter Property="Margin" Value="0,0,0,10" />
+    </Style>
+    <Style Selector="TextBlock.FieldValueText">
+        <Setter Property="FontSize" Value="14" />
+        <Setter Property="Foreground" Value="{DynamicResource InkBrush}" />
+        <Setter Property="TextWrapping" Value="Wrap" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+        <Setter Property="Margin" Value="0,0,0,10" />
+    </Style>
+    <Style Selector="TextBlock.Warn">
+        <Setter Property="Foreground" Value="{DynamicResource WarnBrush}" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+
+    <!-- ===== 容器 ===== -->
+    <Style Selector="Border.CardBorder">
+        <Setter Property="Background" Value="{DynamicResource SurfaceBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource StrokeBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="16" />
+        <Setter Property="Padding" Value="20" />
+        <Setter Property="Margin" Value="0,0,0,16" />
+    </Style>
+    <Style Selector="Border.SoftPanel">
+        <Setter Property="Background" Value="{DynamicResource SurfaceAltBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource StrokeBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="12" />
+        <Setter Property="Padding" Value="14" />
+        <Setter Property="Margin" Value="0,12,0,0" />
+    </Style>
+    <Style Selector="Border.FunctionCardIcon">
+        <Setter Property="Width" Value="34" />
+        <Setter Property="Height" Value="34" />
+        <Setter Property="CornerRadius" Value="10" />
+        <Setter Property="Background" Value="{DynamicResource AccentSoftBrush}" />
+        <Setter Property="VerticalAlignment" Value="Top" />
+        <Setter Property="Margin" Value="0,2,12,0" />
+    </Style>
+
+    <!-- ===== Fluent 自带控件：只换成主题色，形状保持 Fluent 默认 ===== -->
+    <Style Selector="ProgressBar">
+        <Setter Property="Foreground" Value="{DynamicResource AccentBrush}" />
+        <Setter Property="Background" Value="{DynamicResource SurfaceAltBrush}" />
+        <Setter Property="MinHeight" Value="6" />
+        <Setter Property="CornerRadius" Value="3" />
+    </Style>
+    <Style Selector="Slider">
+        <Setter Property="Foreground" Value="{DynamicResource AccentBrush}" />
+    </Style>
+    <Style Selector="ComboBox">
+        <Setter Property="Background" Value="{DynamicResource SurfaceAltBrush}" />
+        <Setter Property="Foreground" Value="{DynamicResource InkBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource StrokeBrush}" />
+        <Setter Property="CornerRadius" Value="10" />
+        <Setter Property="Padding" Value="10,8" />
+        <Setter Property="HorizontalAlignment" Value="Stretch" />
+    </Style>
+    <Style Selector="ScrollViewer">
+        <Setter Property="AllowAutoHide" Value="True" />
+    </Style>
+
+</Styles>

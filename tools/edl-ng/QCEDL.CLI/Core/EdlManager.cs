@@ -579,6 +579,18 @@ internal sealed partial class EdlManager(GlobalOptionsBinder globalOptions) : ID
                     _devicePath = $"usb:vid_{vidToFind:X4},pid_{pidToFind:X4}";
                     _deviceGuid = WinUsbGuid;
                     Logging.Log($"LibUsbDotNet found device: VID={vidToFind:X4}, PID={pidToFind:X4}. Path set to: {_devicePath}", LogLevel.Debug);
+
+                    // Report the selected device the same way the Windows path does: the bus name is the
+                    // device's own product string (QUSB_BULK_CID:xxxx_SN:xxxxxxxx), which callers use to
+                    // check that the expected device was selected.
+                    var busName = TryReadLibUsbProductString(usbDevice);
+                    Logging.Log($"Qualcomm EDL device selected: {_devicePath} on bus {busName ?? "<unknown>"} (Interface: libusb)", LogLevel.Debug);
+                    Logging.Log($"Found device: {_devicePath}");
+                    Logging.Log("  Interface: libusb");
+                    if (busName is not null)
+                    {
+                        Logging.Log($"  Bus Name: {busName}", LogLevel.Debug);
+                    }
                     return true;
                 }
 
@@ -593,6 +605,32 @@ internal sealed partial class EdlManager(GlobalOptionsBinder globalOptions) : ID
             Logging.Log($"Error during LibUsbDotNet device discovery on Linux: {ex.Message}", LogLevel.Error);
             Logging.Log(ex.ToString(), LogLevel.Debug);
             return false;
+        }
+    }
+
+    /// <summary>
+    /// Reads the USB product string of a libusb device, or null when the descriptor cannot be read. The device
+    /// is opened only for the descriptor read and closed again before the transport opens it.
+    /// </summary>
+    private static string? TryReadLibUsbProductString(LibUsbDotNet.LibUsb.IUsbDevice device)
+    {
+        try
+        {
+            device.Open();
+            try
+            {
+                var product = device.Info.Product;
+                return string.IsNullOrWhiteSpace(product) ? null : product.Trim();
+            }
+            finally
+            {
+                device.Close();
+            }
+        }
+        catch (Exception ex)
+        {
+            Logging.Log($"LibUsbDotNet: could not read the product string: {ex.Message}", LogLevel.Debug);
+            return null;
         }
     }
 

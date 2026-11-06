@@ -1,0 +1,20 @@
+<Application xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="FreedomInstaller.Mac.App"
+             RequestedThemeVariant="Light">
+
+    <!-- 浅色 / 深色两份调色板与 Windows 版同键同值；切换主题只改 RequestedThemeVariant。 -->
+    <Application.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.ThemeDictionaries>
+                <ResourceInclude x:Key="Light" Source="/Themes/Light.axaml" />
+                <ResourceInclude x:Key="Dark" Source="/Themes/Dark.axaml" />
+            </ResourceDictionary.ThemeDictionaries>
+        </ResourceDictionary>
+    </Application.Resources>
+
+    <Application.Styles>
+        <FluentTheme />
+        <StyleInclude Source="/Themes/Styles.axaml" />
+    </Application.Styles>
+</Application>

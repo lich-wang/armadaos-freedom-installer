@@ -1,0 +1,81 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- macOS window front end of the internal install. Same pages, palette, styles and text catalogs as
+       FreedomInstaller.App (WPF), drawn with Avalonia because WPF only runs on Windows. Every decision and
+       check stays in FreedomInstaller.Core; the pages drive the same Core calls in the same order as the
+       WPF pages. Release builds come from maintenance/build_installer_macos.py, which compiles the macOS tools,
+       generates their pins and passes everything through BundledBuildInputsProps. -->
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>FreedomInstaller.Mac</RootNamespace>
+    <AssemblyName>FreedomInstaller.Mac</AssemblyName>
+    <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+    <SupportedOSPlatformVersion>12.0</SupportedOSPlatformVersion>
+    <Authors>danyi (mydanyi)</Authors>
+    <Product>ArmadaOS Freedom 安装助手</Product>
+    <Version>0.7.6</Version>
+    <InformationalVersion>0.7.6</InformationalVersion>
+    <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(RuntimeIdentifier)' != ''">
+    <SelfContained>true</SelfContained>
+    <PublishTrimmed>false</PublishTrimmed>
+    <DebugType>embedded</DebugType>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Avalonia" Version="11.3.22" />
+    <PackageReference Include="Avalonia.Desktop" Version="11.3.22" />
+    <PackageReference Include="Avalonia.Themes.Fluent" Version="11.3.22" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\FreedomInstaller.Core\FreedomInstaller.Core.csproj" />
+  </ItemGroup>
+
+  <!-- The WPF window's text catalog code and both catalogs, shared as files so both front ends show the same
+       words. Mac.*.json only adds the few lines that name the Mac host instead of Windows. -->
+  <ItemGroup>
+    <Compile Include="..\FreedomInstaller.App\UiText.cs" Link="Shared\UiText.cs" />
+    <EmbeddedResource Include="..\FreedomInstaller.App\Resources\Static.*.json"
+                      Link="Shared\Resources\%(Filename)%(Extension)"
+                      LogicalName="FreedomInstaller.Strings.%(Filename).json"
+                      WithCulture="false" />
+    <EmbeddedResource Include="..\FreedomInstaller.App\Resources\Dynamic.*.json"
+                      Link="Shared\Resources\%(Filename)%(Extension)"
+                      LogicalName="FreedomInstaller.Strings.%(Filename).json"
+                      WithCulture="false" />
+    <EmbeddedResource Include="Resources\Mac.*.json"
+                      LogicalName="FreedomInstaller.Strings.%(Filename).json"
+                      WithCulture="false" />
+  </ItemGroup>
+
+  <!-- Bundled tools, embedded only when the build supplies existing files, under the same logical names the WPF
+       installer uses. On macOS they are the macos-arm64 EDL archives (edl-ng + libusb) and the universal boot
+       packers made by build_installer_macos.py; nothing is downloaded here. -->
+  <ItemGroup Condition="'$(BundledEdlTb710fuArchive)' != '' and Exists('$(BundledEdlTb710fuArchive)')">
+    <EmbeddedResource Include="$(BundledEdlTb710fuArchive)" LogicalName="FreedomInstaller.EdlTools.TB710FU.zip" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(BundledEdlArchive)' != '' and Exists('$(BundledEdlArchive)')">
+    <EmbeddedResource Include="$(BundledEdlArchive)" LogicalName="FreedomInstaller.EdlTools.zip" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(BundledEdlG5Archive)' != '' and Exists('$(BundledEdlG5Archive)')">
+    <EmbeddedResource Include="$(BundledEdlG5Archive)" LogicalName="FreedomInstaller.EdlTools.G5.zip" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(BundledEdlRawPacker)' != '' and Exists('$(BundledEdlRawPacker)')">
+    <EmbeddedResource Include="$(BundledEdlRawPacker)" LogicalName="FreedomInstaller.EdlRawPacker.exe" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(BundledEdlRawUnpacker)' != '' and Exists('$(BundledEdlRawUnpacker)')">
+    <EmbeddedResource Include="$(BundledEdlRawUnpacker)" LogicalName="FreedomInstaller.EdlRawUnpacker.exe" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(BundledPlatformToolsArchive)' != '' and Exists('$(BundledPlatformToolsArchive)')">
+    <EmbeddedResource Include="$(BundledPlatformToolsArchive)" LogicalName="FreedomInstaller.PlatformTools.zip" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <AvaloniaResource Include="..\FreedomInstaller.App\Assets\sponsor-zh.png" Link="Assets\sponsor-zh.png" />
+  </ItemGroup>
+
+</Project>

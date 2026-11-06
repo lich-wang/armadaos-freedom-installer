@@ -32,21 +32,56 @@ namespace FreedomInstaller.Core
         private const string PythonPathFileName = "python314._pth";
         private const string PythonPathContents = "python314.zip\n.\n../scripts\n";
 
-        // Roles common to every trusted profile, with their reviewed paths and fixed pins. The loader
-        // payloads (one for G4, nine for G5) are never listed here: they come from the selected profile.
-        private static readonly string[] CommonRoleOrder =
+        // Roles common to every trusted profile, with their reviewed paths and fixed pins, per host platform.
+        // The loader payloads (one for G4, nine for G5) are never listed here: they come from the selected
+        // profile. A manifest without a "platform" field is the Windows toolchain, exactly as before.
+        internal sealed class ToolchainPlatform
         {
-            "client",
-            "usbLibrary",
-            "license",
-            "python",
-            "avb",
-            "avbCli",
-            "gpt",
-            "gptCli"
-        };
+            public ToolchainPlatform(
+                string id,
+                string[] roleOrder,
+                Dictionary<string, string> rolePaths,
+                Dictionary<string, (long Bytes, string Sha256)> fixedPins,
+                bool hasPythonRuntime,
+                bool clientNeedsExecuteBit)
+            {
+                Id = id;
+                RoleOrder = roleOrder;
+                RolePaths = rolePaths;
+                FixedPins = fixedPins;
+                HasPythonRuntime = hasPythonRuntime;
+                ClientNeedsExecuteBit = clientNeedsExecuteBit;
+            }
 
-        private static readonly Dictionary<string, string> CommonRolePaths =
+            /// <summary>Value of the manifest "platform" field that selects this platform.</summary>
+            public string Id { get; }
+
+            public string[] RoleOrder { get; }
+
+            public Dictionary<string, string> RolePaths { get; }
+
+            public Dictionary<string, (long Bytes, string Sha256)> FixedPins { get; }
+
+            /// <summary>The Windows toolchain carries the embeddable Python used by the uninstall bridges.</summary>
+            public bool HasPythonRuntime { get; }
+
+            /// <summary>A Unix client is staged without the execute bit by ZIP extraction and needs it set.</summary>
+            public bool ClientNeedsExecuteBit { get; }
+        }
+
+        internal static readonly ToolchainPlatform WindowsPlatform = new ToolchainPlatform(
+            "windows-x64",
+            new[]
+            {
+                "client",
+                "usbLibrary",
+                "license",
+                "python",
+                "avb",
+                "avbCli",
+                "gpt",
+                "gptCli"
+            },
             new Dictionary<string, string>(StringComparer.Ordinal)
             {
                 { "client", "tools/edl-ng.exe" },
@@ -57,9 +92,7 @@ namespace FreedomInstaller.Core
                 { "avbCli", "scripts/avb_stock_cli.py" },
                 { "gpt", "scripts/portable_gpt.py" },
                 { "gptCli", "scripts/edl_gpt_cli.py" }
-            };
-
-        private static readonly Dictionary<string, (long Bytes, string Sha256)> FixedPins =
+            },
             new Dictionary<string, (long Bytes, string Sha256)>(StringComparer.Ordinal)
             {
                 {
@@ -70,7 +103,63 @@ namespace FreedomInstaller.Core
                     "python",
                     (12601679L, "a93abe456ab01bd96d7a085b3cdb6566b3063f4241360d114142fbdb07f0a310")
                 }
-            };
+            },
+            hasPythonRuntime: true,
+            clientNeedsExecuteBit: false);
+
+        // macOS on Apple silicon: the same modified edl-ng built for osx-arm64 with its libusb dylib. The
+        // install route needs no Python, so this toolchain has no python role and an empty PythonPath. The client
+        // pin is the compiled one: a macOS build of the installer generates CompiledToolPins from the osx-arm64
+        // edl-ng it bundles, as the Windows build does from edl-ng.exe.
+        internal static readonly ToolchainPlatform MacOSPlatform = new ToolchainPlatform(
+            "macos-arm64",
+            new[]
+            {
+                "client",
+                "usbLibrary",
+                "license",
+                "avb",
+                "avbCli",
+                "gpt",
+                "gptCli"
+            },
+            new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                { "client", "tools/edl-ng" },
+                { "usbLibrary", "tools/libusb-1.0.dylib" },
+                { "license", "tools/LICENSE.txt" },
+                { "avb", "scripts/avb_stock.py" },
+                { "avbCli", "scripts/avb_stock_cli.py" },
+                { "gpt", "scripts/portable_gpt.py" },
+                { "gptCli", "scripts/edl_gpt_cli.py" }
+            },
+            new Dictionary<string, (long Bytes, string Sha256)>(StringComparer.Ordinal)
+            {
+                {
+                    "client",
+                    (CompiledToolPins.ClientBytes, CompiledToolPins.ClientSha256)
+                }
+            },
+            hasPythonRuntime: false,
+            clientNeedsExecuteBit: true);
+
+        private static ToolchainPlatform ReadPlatform(JsonObject root)
+        {
+            if (!root.ContainsKey("platform"))
+            {
+                return WindowsPlatform;
+            }
+
+            var declared = ReadString(root["platform"]);
+            if (string.Equals(declared, MacOSPlatform.Id, StringComparison.Ordinal))
+            {
+                return MacOSPlatform;
+            }
+
+            throw new InvalidDataException(
+                "The manifest field 'platform' must be absent (Windows) or exactly '" + MacOSPlatform.Id +
+                "'; got '" + (declared ?? "<not a string>") + "'.");
+        }
 
         private readonly string _stagingDirectory;
         private bool _disposed;
@@ -174,16 +263,30 @@ namespace FreedomInstaller.Core
 
                     await ExtractPayloadsAsync(outerEntries, manifest, stagingDirectory, cancellationToken)
                         .ConfigureAwait(false);
-                    await ExpandPythonRuntimeAsync(stagingDirectory, cancellationToken).ConfigureAwait(false);
+                    var platform = manifest.Platform;
+                    var clientPath = StagedPath(stagingDirectory, platform.RolePaths["client"]);
+                    var pythonPath = string.Empty;
+                    if (platform.HasPythonRuntime)
+                    {
+                        await ExpandPythonRuntimeAsync(stagingDirectory, cancellationToken).ConfigureAwait(false);
+                        pythonPath = Path.Combine(stagingDirectory, PythonRuntimeDirectoryName, PythonExecutableName);
+                    }
+
+                    if (platform.ClientNeedsExecuteBit && !OperatingSystem.IsWindows())
+                    {
+                        File.SetUnixFileMode(
+                            clientPath,
+                            UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+                    }
 
                     return new EdlToolchain(
                         stagingDirectory,
-                        StagedPath(stagingDirectory, CommonRolePaths["client"]),
-                        StagedPath(stagingDirectory, CommonRolePaths["usbLibrary"]),
+                        clientPath,
+                        StagedPath(stagingDirectory, platform.RolePaths["usbLibrary"]),
                         StagedPath(stagingDirectory, manifest.Profile.LoaderEntryPath),
-                        Path.Combine(stagingDirectory, PythonRuntimeDirectoryName, PythonExecutableName),
-                        StagedPath(stagingDirectory, CommonRolePaths["avbCli"]),
-                        StagedPath(stagingDirectory, CommonRolePaths["gptCli"]),
+                        pythonPath,
+                        StagedPath(stagingDirectory, platform.RolePaths["avbCli"]),
+                        StagedPath(stagingDirectory, platform.RolePaths["gptCli"]),
                         manifest.ProfileId,
                         manifest.Model,
                         manifest.AndroidBuild,
@@ -362,12 +465,13 @@ namespace FreedomInstaller.Core
 
             // The expected role/path set is compiled from the eight common roles plus every reviewed loader
             // material of the selected profile. The manifest can only ever restate it, never extend it.
-            var expectedRoleOrder = new List<string>(CommonRoleOrder.Length + profile.Materials.Count);
+            var platform = ReadPlatform(root);
+            var expectedRoleOrder = new List<string>(platform.RoleOrder.Length + profile.Materials.Count);
             var expectedPaths = new Dictionary<string, string>(StringComparer.Ordinal);
 
-            foreach (var role in CommonRoleOrder)
+            foreach (var role in platform.RoleOrder)
             {
-                AddExpectedRole(expectedRoleOrder, expectedPaths, role, CommonRolePaths[role]);
+                AddExpectedRole(expectedRoleOrder, expectedPaths, role, platform.RolePaths[role]);
             }
 
             foreach (var material in profile.Materials)
@@ -446,7 +550,7 @@ namespace FreedomInstaller.Core
                 }
             }
 
-            foreach (var pin in FixedPins)
+            foreach (var pin in platform.FixedPins)
             {
                 var declared = entries[pin.Key];
                 if (declared.Bytes != pin.Value.Bytes ||
@@ -479,7 +583,7 @@ namespace FreedomInstaller.Core
                 orderedEntries.Add(entries[role]);
             }
 
-            return new Manifest(profile, model, androidBuild, hardwareId, orderedEntries);
+            return new Manifest(profile, platform, model, androidBuild, hardwareId, orderedEntries);
         }
 
         private static void AddExpectedRole(
@@ -713,11 +817,11 @@ namespace FreedomInstaller.Core
             string stagingDirectory,
             CancellationToken cancellationToken)
         {
-            var pythonArchivePath = StagedPath(stagingDirectory, CommonRolePaths["python"]);
+            var pythonArchivePath = StagedPath(stagingDirectory, WindowsPlatform.RolePaths["python"]);
             if (!File.Exists(pythonArchivePath))
             {
                 throw new InvalidDataException(
-                    "The staged python payload entry '" + CommonRolePaths["python"] + "' is missing.");
+                    "The staged python payload entry '" + WindowsPlatform.RolePaths["python"] + "' is missing.");
             }
 
             var runtimeDirectory = Path.Combine(stagingDirectory, PythonRuntimeDirectoryName);
@@ -892,12 +996,14 @@ namespace FreedomInstaller.Core
         {
             public Manifest(
                 EdlDeviceProfile profile,
+                ToolchainPlatform platform,
                 string model,
                 string androidBuild,
                 string hardwareId,
                 IReadOnlyList<ManifestEntry> orderedEntries)
             {
                 Profile = profile;
+                Platform = platform;
                 ProfileId = profile.ProfileId;
                 Model = model;
                 AndroidBuild = androidBuild;
@@ -906,6 +1012,8 @@ namespace FreedomInstaller.Core
             }
 
             public EdlDeviceProfile Profile { get; }
+
+            public ToolchainPlatform Platform { get; }
 
             public string ProfileId { get; }
 

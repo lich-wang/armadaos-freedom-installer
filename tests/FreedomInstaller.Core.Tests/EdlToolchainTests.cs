@@ -182,6 +182,36 @@ namespace FreedomInstaller.Core.Tests
             AssertNoStagingResidue(workRoot, 0);
         }
 
+        [Fact]
+        public async Task LoadAsync_rejects_an_unknown_platform_before_payload_io()
+        {
+            using var root = new TestRoot();
+            var workRoot = root.CreateWorkRoot();
+            var fixture = Fixture.Default();
+            fixture.Platform = "linux-x64";
+            using var zip = fixture.BuildZip();
+
+            var ex = await Assert.ThrowsAsync<InvalidDataException>(() => EdlToolchain.LoadAsync(zip, workRoot));
+            Assert.Contains("platform", ex.Message, StringComparison.OrdinalIgnoreCase);
+            AssertNoStagingResidue(workRoot, 0);
+        }
+
+        [Fact]
+        public async Task LoadAsync_rejects_windows_payloads_declared_as_the_macos_platform()
+        {
+            // The macOS role table has no python role and other client paths, so a Windows payload set can
+            // never be relabelled as a macOS toolchain.
+            using var root = new TestRoot();
+            var workRoot = root.CreateWorkRoot();
+            var fixture = Fixture.Default();
+            fixture.Platform = "macos-arm64";
+            using var zip = fixture.BuildZip();
+
+            var ex = await Assert.ThrowsAsync<InvalidDataException>(() => EdlToolchain.LoadAsync(zip, workRoot));
+            Assert.Contains("role", ex.Message, StringComparison.OrdinalIgnoreCase);
+            AssertNoStagingResidue(workRoot, 0);
+        }
+
         // ---------------------------------------------------------------- D
 
         [Theory]
@@ -891,6 +921,7 @@ namespace FreedomInstaller.Core.Tests
             public string AndroidBuild = ExpectedAndroidBuild;
             public string HardwareId = ExpectedHardwareId;
             public bool IncludeManifest = true;
+            public string? Platform;
             public string? RawManifest;
             public List<EntrySpec> Entries = new();
             public List<(string Name, byte[] Payload, bool Symlink)> RawMembers = new();
@@ -1015,6 +1046,11 @@ namespace FreedomInstaller.Core.Tests
                     ["hardwareId"] = HardwareId,
                     ["entries"] = entries
                 };
+
+                if (Platform is not null)
+                {
+                    root["platform"] = Platform;
+                }
 
                 return root.ToJsonString();
             }

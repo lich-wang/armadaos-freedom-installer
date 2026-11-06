@@ -1,0 +1,815 @@
+<!--
+    macOS 主窗口：版式逐块照搬 FreedomInstaller.App/MainWindow.xaml（顶栏品牌与切换按钮、准备页、
+    功能首页、左侧步骤 + 右侧页面、底栏），控件名称与 Windows 版相同，文字一律引用同一份
+    Static.* / Dynamic.* 文案。macOS 版目前只开放「安装到内部存储」，其余功能卡片保留但不可用。
+-->
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="FreedomInstaller.Mac.MainWindow"
+        Title="{DynamicResource Static.Title}"
+        Width="1100"
+        Height="760"
+        MinWidth="980"
+        MinHeight="680"
+        WindowStartupLocation="CenterScreen"
+        Background="{DynamicResource CanvasBrush}"
+        Foreground="{DynamicResource InkBrush}"
+        FontFamily="PingFang SC, Helvetica Neue, Arial">
+
+
+    <Grid RowDefinitions="Auto,*,Auto">
+
+        <!-- ================= 顶部：品牌 + 支持 / 主题 / 语言 ================= -->
+        <Grid Grid.Row="0" Margin="20,12,20,8" ColumnDefinitions="*,Auto,Auto,Auto">
+            <Grid Grid.Column="0" VerticalAlignment="Center" ColumnDefinitions="Auto,*">
+                <!-- 仓库风帆标记：路径与 Windows 版相同（.github/assets/armada-mark-*.svg，作者 Rax），随主题用 InkBrush 着色。 -->
+                <Viewbox Grid.Column="0" Width="48" Height="48" Stretch="Uniform" VerticalAlignment="Center" Margin="0,0,10,0" ToolTip.Tip="ArmadaOS">
+                    <Canvas Width="512" Height="512">
+                        <Path Fill="{DynamicResource InkBrush}"
+                              Data="M316.315 63.5C324.671 102.812 329.069 143.587 329.069 185.389C329.069 256.56 316.323 324.753 292.994 387.813C280.821 386.354 268.43 385.603 255.863 385.603C201.724 385.603 150.84 399.54 106.604 424.022C213.937 333.588 290.014 207.24 316.315 63.5Z" />
+                        <Path Fill="{DynamicResource InkBrush}"
+                              Data="M356.398 169.27C377.349 214.386 389.045 264.671 389.045 317.689C389.045 349.698 384.781 380.71 376.793 410.191C356.908 401.716 335.953 395.269 314.186 391.106C341.415 323.756 356.411 250.15 356.411 173.041C356.411 171.783 356.406 170.526 356.398 169.27Z" />
+                    </Canvas>
+                </Viewbox>
+                <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                    <TextBlock Text="ArmadaOS Freedom"
+                               FontSize="17"
+                               FontWeight="SemiBold"
+                               Foreground="{DynamicResource InkBrush}" />
+                    <TextBlock Text="{DynamicResource Static.BrandSubtitle}"
+                               FontSize="11.5"
+                               Foreground="{DynamicResource MutedBrush}"
+                               TextWrapping="Wrap"
+                               Margin="0,2,0,0" />
+                </StackPanel>
+            </Grid>
+
+            <Button x:Name="SupportProjectButton"
+                    Grid.Column="1"
+                    Theme="{StaticResource SecondaryButton}"
+                    Click="OnShowSupport"
+                    VerticalAlignment="Center"
+                    Padding="14,8"
+                    Margin="0,0,8,0">
+                <TextBlock Text="{DynamicResource Static.SupportButton}" FontSize="13" VerticalAlignment="Center" />
+            </Button>
+
+            <Button x:Name="ThemeToggleButton"
+                    Grid.Column="2"
+                    Theme="{StaticResource SecondaryButton}"
+                    Click="OnToggleTheme"
+                    VerticalAlignment="Center"
+                    Padding="14,8">
+                <StackPanel Orientation="Horizontal">
+                    <Border Width="12"
+                            Height="12"
+                            CornerRadius="6"
+                            Background="{DynamicResource AccentBrush}"
+                            VerticalAlignment="Center" />
+                    <TextBlock x:Name="ThemeToggleText"
+                               FontSize="13"
+                               Margin="8,0,0,0"
+                               VerticalAlignment="Center" />
+                </StackPanel>
+            </Button>
+
+            <!-- 语言按钮显示的是「切换目标」，不是当前语言。 -->
+            <Button x:Name="LanguageToggleButton"
+                    Grid.Column="3"
+                    Theme="{StaticResource SecondaryButton}"
+                    Click="OnToggleLanguage"
+                    VerticalAlignment="Center"
+                    Padding="14,8"
+                    Margin="8,0,0,0"
+                    ToolTip.Tip="{DynamicResource Static.LanguageTooltip}">
+                <TextBlock Text="{DynamicResource Static.LanguageToggleLabel}" FontSize="13" VerticalAlignment="Center" />
+            </Button>
+        </Grid>
+
+        <!-- ================= 主体 ================= -->
+        <Grid Grid.Row="1" Margin="20,0,20,0" ColumnDefinitions="196,16,*">
+
+            <!-- 左侧导航：只在进入功能向导后显示。 -->
+            <Border x:Name="WorkflowSidebar"
+                    Grid.Column="0"
+                    Background="{DynamicResource SurfaceBrush}"
+                    BorderBrush="{DynamicResource StrokeBrush}"
+                    BorderThickness="1"
+                    CornerRadius="16"
+                    Padding="12"
+                    VerticalAlignment="Top"
+                    IsVisible="False">
+                <StackPanel>
+                    <Button x:Name="BackToFunctionsButton"
+                            Content="{DynamicResource Dynamic.BackToFunctions}"
+                            Theme="{StaticResource GhostButton}"
+                            Click="OnBackToFunctions"
+                            Padding="8,4"
+                            Margin="0,0,0,10" />
+
+                    <TextBlock Text="{DynamicResource Static.NavSelectedFunction}"
+                               Classes="CaptionText"
+                               Margin="8,0,0,2" />
+                    <TextBlock Text="{DynamicResource Static.Function.Install.Title}"
+                               FontSize="15"
+                               FontWeight="SemiBold"
+                               Foreground="{DynamicResource InkBrush}"
+                               TextWrapping="Wrap"
+                               Margin="8,0,0,10" />
+
+                    <TextBlock Text="{DynamicResource Static.NavTitle}"
+                               Classes="CaptionText"
+                               Margin="8,4,0,8" />
+
+                    <StackPanel x:Name="InternalInstallStepNav">
+                        <RadioButton x:Name="InternalInstallNavCheck"
+                                     GroupName="InternalInstallSteps"
+                                     Theme="{StaticResource StepNavItem}"
+                                     Tag="0"
+                                     IsChecked="True"
+                                     IsCheckedChanged="OnInternalInstallNavChecked">
+                            <StackPanel>
+                                <TextBlock Text="01" FontSize="11" />
+                                <TextBlock Text="{DynamicResource Static.InternalInstall.Nav.Connect}" FontSize="14" FontWeight="SemiBold" />
+                            </StackPanel>
+                        </RadioButton>
+                        <RadioButton x:Name="InternalInstallNavBackup"
+                                     GroupName="InternalInstallSteps"
+                                     Theme="{StaticResource StepNavItem}"
+                                     Tag="1"
+                                     IsCheckedChanged="OnInternalInstallNavChecked">
+                            <StackPanel>
+                                <TextBlock Text="02" FontSize="11" />
+                                <TextBlock Text="{DynamicResource Static.InternalInstall.Nav.Backup}" FontSize="14" FontWeight="SemiBold" />
+                            </StackPanel>
+                        </RadioButton>
+                        <RadioButton x:Name="InternalInstallNavCapacity"
+                                     GroupName="InternalInstallSteps"
+                                     Theme="{StaticResource StepNavItem}"
+                                     Tag="2"
+                                     IsCheckedChanged="OnInternalInstallNavChecked">
+                            <StackPanel>
+                                <TextBlock Text="03" FontSize="11" />
+                                <TextBlock Text="{DynamicResource Static.InternalInstall.Nav.Capacity}" FontSize="14" FontWeight="SemiBold" />
+                            </StackPanel>
+                        </RadioButton>
+                        <RadioButton x:Name="InternalInstallNavConfirm"
+                                     GroupName="InternalInstallSteps"
+                                     Theme="{StaticResource StepNavItem}"
+                                     Tag="3"
+                                     IsCheckedChanged="OnInternalInstallNavChecked">
+                            <StackPanel>
+                                <TextBlock Text="04" FontSize="11" />
+                                <TextBlock Text="{DynamicResource Static.InternalInstall.Nav.Confirm}" FontSize="14" FontWeight="SemiBold" />
+                            </StackPanel>
+                        </RadioButton>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+
+            <!-- ================= 向导页面 ================= -->
+            <ScrollViewer x:Name="WorkflowScrollViewer"
+                          Grid.Column="2"
+                          VerticalScrollBarVisibility="Auto"
+                          HorizontalScrollBarVisibility="Disabled"
+                          Padding="0,0,14,0"
+                          Margin="0,0,0,12"
+                          IsVisible="False">
+                <StackPanel>
+
+                    <!-- ================= 01 连接检测 ================= -->
+                    <StackPanel x:Name="InternalInstallCheckPage">
+                        <TextBlock Text="{DynamicResource Static.InternalInstall.Check.Title}" Classes="H1Text" />
+                        <TextBlock Text="{DynamicResource Static.InternalInstall.Check.Lead}"
+                                   Classes="BodyText"
+                                   Margin="0,6,0,0" />
+
+                        <TextBlock x:Name="InternalInstallDevicesLabel"
+                                   Text="{DynamicResource Static.InternalInstall.Check.DeviceLabel}"
+                                   Classes="FieldLabelText"
+                                   Margin="0,14,0,6"
+                                   IsVisible="False" />
+                        <ComboBox x:Name="InternalInstallDevicesCombo"
+                                  SelectionChanged="OnInternalInstallDeviceSelected"
+                                  IsEnabled="False"
+                                  IsVisible="False" />
+
+                        <WrapPanel Margin="0,12,0,0">
+                            <Button x:Name="InternalInstallCheckButton"
+                                    Content="{DynamicResource Static.InternalInstall.Check.Button}"
+                                    Click="OnCheckInternalInstallDevice"
+                                    Theme="{StaticResource PrimaryButton}" />
+                        </WrapPanel>
+
+                        <TextBlock x:Name="InternalInstallCheckProgressText"
+                                   Classes="BodyInkText"
+                                   Margin="0,12,0,0"
+                                   Text="{DynamicResource Static.InternalInstall.Check.ProgressInitial}" />
+                        <TextBlock x:Name="InternalInstallCheckStatusText"
+                                   Classes="BodyText"
+                                   Margin="0,4,0,0"
+                                   Text="{DynamicResource Static.InternalInstall.Check.StatusInitial}" />
+
+                        <Border Classes="CardBorder" Margin="0,16,0,0">
+                            <StackPanel>
+                                <TextBlock Text="{DynamicResource Static.InternalInstall.Check.FieldsTitle}" Classes="H2Text" />
+                                <Grid Margin="0,10,0,0" ColumnDefinitions="96,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto">
+                                    <TextBlock Grid.Row="0" Grid.Column="0" Text="{DynamicResource Static.FieldModel}" Classes="FieldLabelText" />
+                                    <TextBlock Grid.Row="0" Grid.Column="1" x:Name="InternalInstallModelText" Text="—" Classes="FieldValueText" />
+                                    <TextBlock Grid.Row="1" Grid.Column="0" Text="{DynamicResource Static.FieldSerial}" Classes="FieldLabelText" />
+                                    <TextBlock Grid.Row="1" Grid.Column="1" x:Name="InternalInstallSerialText" Text="—" Classes="FieldValueText" />
+                                    <TextBlock Grid.Row="2" Grid.Column="0" Text="{DynamicResource Static.FieldFirmware}" Classes="FieldLabelText" />
+                                    <TextBlock Grid.Row="2" Grid.Column="1" x:Name="InternalInstallFirmwareText" Text="—" Classes="FieldValueText" />
+                                    <TextBlock Grid.Row="3" Grid.Column="0" Text="{DynamicResource Static.FieldBootState}" Classes="FieldLabelText" />
+                                    <TextBlock Grid.Row="3" Grid.Column="1" x:Name="InternalInstallBootloaderText" Text="—" Classes="FieldValueText" />
+                                    <TextBlock Grid.Row="4" Grid.Column="0" Text="{DynamicResource Static.InternalInstall.Field.Route}" Classes="FieldLabelText" />
+                                    <TextBlock Grid.Row="4" Grid.Column="1" x:Name="InternalInstallRouteText" Text="—" Classes="FieldValueText" />
+                                    <TextBlock Grid.Row="5" Grid.Column="0" Text="{DynamicResource Static.InternalInstall.Field.Power}" Classes="FieldLabelText" />
+                                    <TextBlock Grid.Row="5" Grid.Column="1" x:Name="InternalInstallPowerText" Text="—" Classes="FieldValueText" />
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+
+                    <!-- ================= 02 系统备份 ================= -->
+                    <StackPanel x:Name="InternalInstallBackupPage" IsVisible="False">
+                        <TextBlock Text="{DynamicResource Static.InternalInstall.Backup.Title}" Classes="H1Text" />
+                        <TextBlock Text="{DynamicResource Static.InternalInstall.Backup.Warning}"
+                                   Classes="BodyText Warn"
+                                   Margin="0,8,0,0" />
+                        <TextBlock Text="{DynamicResource Static.InternalInstall.Backup.FolderLabel}"
+                                   Classes="FieldLabelText"
+                                   Margin="0,16,0,6" />
+                        <Grid ColumnDefinitions="*,Auto">
+                            <TextBox x:Name="InternalInstallBackupFolderBox"
+                                     Grid.Column="0"
+                                     Theme="{StaticResource InputTextBox}"
+                                     IsReadOnly="True" />
+                            <Button x:Name="InternalInstallBackupBrowseButton"
+                                    Grid.Column="1"
+                                    Content="{DynamicResource Static.Browse}"
+                                    Click="OnBrowseInternalInstallBackupFolder"
+                                    Theme="{StaticResource SecondaryButton}"
+                                    IsEnabled="False"
+                                    Margin="10,0,0,0" />
+                        </Grid>
+                        <WrapPanel Margin="0,14,0,0">
+                            <Button x:Name="InternalInstallBackupButton"
+                                    Content="{DynamicResource Static.InternalInstall.Backup.StartButton}"
+                                    Click="OnBackupInternalInstall"
+                                    Theme="{StaticResource PrimaryButton}"
+                                    IsEnabled="False" />
+                        </WrapPanel>
+                        <ProgressBar x:Name="InternalInstallBackupProgressBar"
+                                     Minimum="0"
+                                     Maximum="100"
+                                     Value="0"
+                                     Height="6"
+                                     Margin="0,14,0,0" />
+                        <TextBlock x:Name="InternalInstallBackupStatusText"
+                                   Classes="BodyInkText"
+                                   Margin="0,10,0,0"
+                                   Text="{DynamicResource Static.InternalInstall.Backup.StatusInitial}" />
+                        <TextBlock x:Name="InternalInstallBackupVerifiedText"
+                                   Classes="CaptionText"
+                                   Margin="0,4,0,0"
+                                   Text="{DynamicResource Static.InternalInstall.Backup.VerifiedInitial}" />
+                        <Border Classes="CardBorder" Margin="0,16,0,0">
+                            <StackPanel>
+                                <TextBlock Text="{DynamicResource Dynamic.InternalInstall.Backup.DetailTitle}" Classes="H2Text" />
+                                <TextBlock Text="{DynamicResource Dynamic.InternalInstall.Backup.DetailDirectoryLabel}" Classes="FieldLabelText" Margin="0,10,0,4" />
+                                <TextBlock x:Name="InternalInstallBackupDirectoryText" Classes="FieldValueText" Text="—" />
+                                <TextBlock Text="{DynamicResource Dynamic.InternalInstall.Backup.DetailManifestLabel}" Classes="FieldLabelText" Margin="0,8,0,4" />
+                                <TextBlock x:Name="InternalInstallBackupManifestText" Classes="FieldValueText" Text="—" />
+                                <TextBlock Text="{DynamicResource Dynamic.InternalInstall.Backup.DetailManifestHashLabel}" Classes="FieldLabelText" Margin="0,8,0,4" />
+                                <TextBlock x:Name="InternalInstallBackupManifestHashText" Classes="FieldValueText" Text="—" />
+                            </StackPanel>
+                        </Border>
+                        <Border Classes="CardBorder" Margin="0,16,0,0">
+                            <StackPanel>
+                                <TextBlock Text="{DynamicResource Static.InternalInstall.Backup.CoverageTitle}" Classes="H2Text" />
+                                <TextBlock Text="{DynamicResource Static.InternalInstall.Backup.Coverage}" Classes="BodyText" Margin="0,8,0,0" />
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+
+                    <!-- ================= 03 分配空间 ================= -->
+                    <StackPanel x:Name="InternalInstallCapacityPage" IsVisible="False">
+                        <TextBlock Text="{DynamicResource Static.InternalInstall.Capacity.Title}" Classes="H1Text" />
+                        <TextBlock Text="{DynamicResource Static.InternalInstall.Capacity.Lead}" Classes="BodyText" Margin="0,6,0,0" />
+                        <TextBlock Text="{DynamicResource Static.InternalInstall.Capacity.PackageLabel}" Classes="FieldLabelText" Margin="0,16,0,6" />
+                        <Grid ColumnDefinitions="*,Auto,Auto">
+                            <TextBox x:Name="InternalInstallPackageBox"
+                                     Grid.Column="0"
+                                     Theme="{StaticResource InputTextBox}"
+                                     IsEnabled="False"
+                                     TextChanged="OnInternalInstallPackagePathChanged" />
+                            <Button x:Name="InternalInstallPackageBrowseButton"
+                                    Grid.Column="1"
+                                    Content="{DynamicResource Static.Browse}"
+                                    Theme="{StaticResource SecondaryButton}"
+                                    Click="OnBrowseInternalInstallPackage"
+                                    IsEnabled="False"
+                                    Margin="10,0,0,0" />
+                            <Button x:Name="InternalInstallPackageValidateButton"
+                                    Grid.Column="2"
+                                    Content="{DynamicResource Static.ValidatePackage}"
+                                    Theme="{StaticResource SecondaryButton}"
+                                    Click="OnValidateInternalInstallPackage"
+                                    IsEnabled="False"
+                                    Margin="10,0,0,0" />
+                        </Grid>
+                        <TextBlock x:Name="InternalInstallPackageStatusText"
+                                   Classes="CaptionText"
+                                   Margin="0,8,0,0"
+                                   Text="{DynamicResource Static.InternalInstall.Capacity.PackageStatusInitial}" />
+                        <Border Classes="CardBorder" Margin="0,16,0,0">
+                            <StackPanel>
+                                <TextBlock Text="{DynamicResource Static.InternalInstall.Capacity.CardTitle}" Classes="H2Text" />
+                                <Grid Margin="0,10,0,0" ColumnDefinitions="180,*" RowDefinitions="Auto,Auto,Auto,Auto">
+                                    <TextBlock Grid.Row="0" Grid.Column="0" Text="{DynamicResource Static.InternalInstall.Capacity.TotalLabel}" Classes="FieldLabelText" />
+                                    <TextBlock Grid.Row="0" Grid.Column="1" x:Name="InternalInstallCapacityTotalText" Text="—" Classes="FieldValueText" />
+                                    <TextBlock Grid.Row="1" Grid.Column="0" Text="{DynamicResource Static.InternalInstall.Capacity.AndroidLabel}" Classes="FieldLabelText" />
+                                    <TextBlock Grid.Row="1" Grid.Column="1" x:Name="InternalInstallCapacityAndroidText" Text="—" Classes="FieldValueText" />
+                                    <TextBlock Grid.Row="2" Grid.Column="0" Text="{DynamicResource Static.InternalInstall.Capacity.LinuxLabel}" Classes="FieldLabelText" />
+                                    <TextBlock Grid.Row="2" Grid.Column="1" x:Name="InternalInstallCapacityLinuxText" Text="—" Classes="FieldValueText" />
+                                    <TextBlock Grid.Row="3" Grid.Column="0" Text="{DynamicResource Static.InternalInstall.Capacity.BackupFixedLabel}" Classes="FieldLabelText" />
+                                    <TextBlock Grid.Row="3" Grid.Column="1" Text="{DynamicResource Static.InternalInstall.Capacity.BackupFixedValue}" Classes="FieldValueText" />
+                                </Grid>
+                                <Slider x:Name="InternalInstallCapacitySlider"
+                                        Minimum="16"
+                                        Maximum="16"
+                                        Value="16"
+                                        TickFrequency="1"
+                                        IsSnapToTickEnabled="True"
+                                        IsEnabled="False"
+                                        ValueChanged="OnInternalInstallCapacityChanged"
+                                        Margin="0,14,0,0" />
+                                <TextBlock Text="{DynamicResource Static.InternalInstall.Capacity.Rule}" Classes="CaptionText" Margin="0,10,0,0" />
+                                <TextBlock x:Name="InternalInstallCapacityStatusText"
+                                           Classes="BodyText"
+                                           Margin="0,6,0,0"
+                                           Text="{DynamicResource Static.InternalInstall.Capacity.StatusWaiting}" />
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+
+                    <!-- ================= 04 确认安装 ================= -->
+                    <StackPanel x:Name="InternalInstallConfirmPage" IsVisible="False">
+                        <TextBlock Text="{DynamicResource Static.InternalInstall.Confirm.Title}" Classes="H1Text" />
+                        <TextBlock x:Name="InternalInstallConfirmLeadText"
+                                   Text="{DynamicResource Static.InternalInstall.Confirm.Lead}"
+                                   Classes="BodyText"
+                                   Margin="0,6,0,0" />
+                        <TextBlock Text="{DynamicResource Static.InternalInstall.Confirm.Warning}"
+                                   Classes="BodyText Warn"
+                                   Margin="0,8,0,0" />
+
+                        <Grid Margin="0,16,0,0" ColumnDefinitions="*,16,*">
+                            <Border Grid.Column="0" Classes="CardBorder">
+                                <StackPanel>
+                                    <TextBlock Text="{DynamicResource Static.InternalInstall.Confirm.DeviceCardTitle}" Classes="H2Text" />
+                                    <TextBlock Text="{DynamicResource Static.FieldModel}" Classes="FieldLabelText" Margin="0,10,0,0" />
+                                    <TextBlock x:Name="InternalInstallConfirmDeviceModelText" Text="—" Classes="FieldValueText" Margin="0,2,0,8" />
+                                    <TextBlock Text="{DynamicResource Static.FieldSerial}" Classes="FieldLabelText" />
+                                    <TextBlock x:Name="InternalInstallConfirmDeviceSerialText" Text="—" Classes="FieldValueText" Margin="0,2,0,8" />
+                                    <TextBlock Text="{DynamicResource Static.FieldFirmware}" Classes="FieldLabelText" />
+                                    <TextBlock x:Name="InternalInstallConfirmDeviceFirmwareText" Text="—" Classes="FieldValueText" Margin="0,2,0,8" />
+                                    <TextBlock Text="{DynamicResource Static.FieldBootState}" Classes="FieldLabelText" />
+                                    <TextBlock x:Name="InternalInstallConfirmDeviceBootloaderText" Text="—" Classes="FieldValueText" Margin="0,2,0,0" />
+                                </StackPanel>
+                            </Border>
+                            <Border Grid.Column="2" Classes="CardBorder">
+                                <StackPanel>
+                                    <TextBlock Text="{DynamicResource Static.InternalInstall.Confirm.PackageCardTitle}" Classes="H2Text" />
+                                    <TextBlock Text="{DynamicResource Static.InternalInstall.Confirm.PackageVersionLabel}" Classes="FieldLabelText" Margin="0,10,0,0" />
+                                    <TextBlock x:Name="InternalInstallConfirmPackageVersionText" Text="—" Classes="FieldValueText" Margin="0,2,0,8" />
+                                    <TextBlock Text="{DynamicResource Static.InternalInstall.Confirm.PackageIdLabel}" Classes="FieldLabelText" />
+                                    <TextBlock x:Name="InternalInstallConfirmPackageIdText" Text="—" Classes="FieldValueText" Margin="0,2,0,0" />
+                                    <TextBlock Text="{DynamicResource Static.InternalInstall.Confirm.BootBackupLabel}" Classes="FieldLabelText" Margin="0,14,0,0" />
+                                    <TextBlock x:Name="InternalInstallConfirmBootBackupText"
+                                               Classes="BodyText"
+                                               Margin="0,4,0,0"
+                                               Text="{DynamicResource Dynamic.InternalInstall.Confirm.BootPending}" />
+                                </StackPanel>
+                            </Border>
+                        </Grid>
+
+                        <Border Classes="CardBorder" Margin="0,16,0,0">
+                            <StackPanel>
+                                <TextBlock Text="{DynamicResource Static.InternalInstall.Confirm.AllocationTitle}" Classes="H2Text" />
+                                <Grid Margin="0,10,0,0" ColumnDefinitions="*,*,*">
+                                    <StackPanel Grid.Column="0" Margin="0,0,12,0">
+                                        <TextBlock Text="{DynamicResource Static.InternalInstall.Confirm.AllocationAndroidLabel}" Classes="FieldLabelText" TextWrapping="Wrap" />
+                                        <TextBlock x:Name="InternalInstallConfirmAndroidText" Text="—" Classes="FieldValueText" Margin="0,2,0,0" />
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="1" Margin="0,0,12,0">
+                                        <TextBlock Text="{DynamicResource Static.InternalInstall.Confirm.AllocationLinuxLabel}" Classes="FieldLabelText" TextWrapping="Wrap" />
+                                        <TextBlock x:Name="InternalInstallConfirmLinuxText" Text="—" Classes="FieldValueText" Margin="0,2,0,0" />
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="2">
+                                        <TextBlock Text="{DynamicResource Static.InternalInstall.Confirm.AllocationBackupLabel}" Classes="FieldLabelText" TextWrapping="Wrap" />
+                                        <TextBlock x:Name="InternalInstallConfirmRecoveryText" Text="—" Classes="FieldValueText" Margin="0,2,0,0" />
+                                    </StackPanel>
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+
+                        <Grid Margin="0,16,0,0" ColumnDefinitions="*,16,*">
+                            <Border Grid.Column="0" Classes="CardBorder">
+                                <StackPanel>
+                                    <TextBlock Text="{DynamicResource Static.InternalInstall.Confirm.BackupCardTitle}" Classes="H2Text" />
+                                    <TextBlock Text="{DynamicResource Static.InternalInstall.Confirm.BackupPathLabel}" Classes="FieldLabelText" Margin="0,10,0,0" />
+                                    <TextBlock x:Name="InternalInstallConfirmBackupPathText" Text="—" Classes="FieldValueText" Margin="0,2,0,0" />
+                                </StackPanel>
+                            </Border>
+                            <Border Grid.Column="2" Classes="CardBorder">
+                                <StackPanel>
+                                    <TextBlock Text="{DynamicResource Static.InternalInstall.Confirm.PowerCardTitle}" Classes="H2Text" />
+                                    <TextBlock Text="{DynamicResource Static.InternalInstall.Confirm.PowerRecordLabel}" Classes="CaptionText" Margin="0,10,0,0" />
+                                    <TextBlock x:Name="InternalInstallConfirmPowerText"
+                                               Classes="BodyText"
+                                               Margin="0,4,0,0"
+                                               Text="{DynamicResource Dynamic.InternalInstall.Power.Unknown}" />
+                                </StackPanel>
+                            </Border>
+                        </Grid>
+
+                        <Border Classes="CardBorder" Margin="0,16,0,0">
+                            <CheckBox x:Name="InternalInstallEraseRiskCheck"
+                                      Theme="{StaticResource RiskCheckBox}"
+                                      IsChecked="False"
+                                      IsEnabled="False"
+                                      IsCheckedChanged="OnInternalInstallEraseRiskChanged">
+                                <TextBlock Text="{DynamicResource Static.InternalInstall.Confirm.EraseRisk}" TextWrapping="Wrap" FontSize="13" />
+                            </CheckBox>
+                        </Border>
+                        <Expander x:Name="InternalInstallVerificationDetails"
+                                  Theme="{StaticResource SectionExpander}"
+                                  IsExpanded="False"
+                                  Header="{DynamicResource Static.InternalInstall.Confirm.VerificationDetailsHeader}">
+                            <TextBlock x:Name="InternalInstallSummaryText"
+                                       Classes="BodyInkText"
+                                       Margin="0,8,0,4"
+                                       Text="{DynamicResource Static.InternalInstall.Confirm.SummaryInitial}" />
+                        </Expander>
+                        <TextBlock x:Name="InternalInstallConfirmStatusText"
+                                   Classes="BodyInkText"
+                                   Margin="0,14,0,0"
+                                   Text="{DynamicResource Static.InternalInstall.Confirm.StatusWaiting}" />
+                        <ProgressBar x:Name="InternalInstallConfirmProgressBar"
+                                     Minimum="0"
+                                     Maximum="100"
+                                     Value="0"
+                                     Height="6"
+                                     IsVisible="False"
+                                     Margin="0,10,0,0" />
+                        <TextBlock x:Name="InternalInstallAcceptanceStatusText"
+                                   Classes="CaptionText"
+                                   Margin="0,6,0,0"
+                                   Text="{DynamicResource Static.InternalInstall.Confirm.AcceptanceInitial}" />
+                    </StackPanel>
+
+                    <!-- 只要还有真实 9008 会话就显示：复位退出 9008。 -->
+                    <Border x:Name="InternalInstallExitMaintenancePanel"
+                            Classes="CardBorder"
+                            Margin="0,16,0,0"
+                            IsVisible="False">
+                        <StackPanel>
+                            <TextBlock Text="{DynamicResource Dynamic.InternalInstall.Exit.Title}" Classes="H2Text" />
+                            <Button x:Name="InternalInstallExitMaintenanceButton"
+                                    Content="{DynamicResource Dynamic.InternalInstall.Exit.Button}"
+                                    Click="OnExitInternalInstallMaintenance"
+                                    Theme="{StaticResource SecondaryButton}"
+                                    HorizontalAlignment="Left"
+                                    Margin="0,10,0,0" />
+                            <TextBlock x:Name="InternalInstallExitMaintenanceStatusText"
+                                       Classes="BodyText"
+                                       Margin="0,8,0,0"
+                                       Text="{DynamicResource Dynamic.InternalInstall.Exit.StatusIdle}" />
+                        </StackPanel>
+                    </Border>
+
+                    <!-- 四个页面共用的日志 -->
+                    <Border Classes="CardBorder" Margin="0,16,0,0">
+                        <Expander x:Name="InternalInstallLogExpander" Theme="{StaticResource SectionExpander}" Margin="0" IsExpanded="True">
+                            <Expander.Header>
+                                <TextBlock Text="{DynamicResource Dynamic.InternalInstall.Log.Title}" Classes="H2Text" />
+                            </Expander.Header>
+                            <ScrollViewer x:Name="InternalInstallLogScrollViewer"
+                                          Height="160"
+                                          Margin="0,10,0,0"
+                                          VerticalScrollBarVisibility="Auto"
+                                          HorizontalScrollBarVisibility="Disabled">
+                                <StackPanel>
+                                    <TextBlock x:Name="InternalInstallLogEmptyText"
+                                               Text="{DynamicResource Dynamic.InternalInstall.Log.Empty}"
+                                               Classes="CaptionText" />
+                                    <StackPanel x:Name="InternalInstallLogList" />
+                                </StackPanel>
+                            </ScrollViewer>
+                        </Expander>
+                    </Border>
+                </StackPanel>
+            </ScrollViewer>
+
+            <!-- ================= 运行环境准备 ================= -->
+            <ScrollViewer x:Name="EnvironmentPage"
+                          Grid.Column="0"
+                          Grid.ColumnSpan="3"
+                          VerticalScrollBarVisibility="Auto"
+                          HorizontalScrollBarVisibility="Disabled"
+                          Padding="0,0,14,0"
+                          Margin="0,0,0,12">
+                <StackPanel>
+                    <TextBlock Text="{DynamicResource Static.Environment.Title}" Classes="H1Text" />
+                    <TextBlock Text="{DynamicResource Static.Environment.Lead}" Classes="BodyText" Margin="0,6,0,0" />
+                    <Border Classes="CardBorder" Margin="0,12,0,0">
+                        <StackPanel>
+                            <Grid Margin="0,0,0,12" ColumnDefinitions="Auto,*">
+                                <Border Grid.Column="0" Width="8" Height="8" CornerRadius="4" Background="{DynamicResource MutedBrush}" VerticalAlignment="Top" Margin="0,6,10,0" />
+                                <StackPanel Grid.Column="1">
+                                    <TextBlock Text="{DynamicResource Static.Environment.System}" FontSize="14" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}" TextWrapping="Wrap" />
+                                    <TextBlock x:Name="EnvironmentSystemStatusText" Text="{DynamicResource Dynamic.Environment.Checking}" FontSize="12" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,2,0,0" />
+                                </StackPanel>
+                            </Grid>
+                            <Grid Margin="0,0,0,12" ColumnDefinitions="Auto,*">
+                                <Border Grid.Column="0" Width="8" Height="8" CornerRadius="4" Background="{DynamicResource MutedBrush}" VerticalAlignment="Top" Margin="0,6,10,0" />
+                                <StackPanel Grid.Column="1">
+                                    <TextBlock Text="{DynamicResource Static.Environment.Runtime}" FontSize="14" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}" TextWrapping="Wrap" />
+                                    <TextBlock Text="{DynamicResource Static.Environment.RuntimeIncluded}" FontSize="12" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,2,0,0" />
+                                </StackPanel>
+                            </Grid>
+                            <Grid Margin="0,0,0,12" ColumnDefinitions="Auto,*">
+                                <Border Grid.Column="0" Width="8" Height="8" CornerRadius="4" Background="{DynamicResource MutedBrush}" VerticalAlignment="Top" Margin="0,6,10,0" />
+                                <StackPanel Grid.Column="1">
+                                    <TextBlock Text="{DynamicResource Static.Environment.Tools}" FontSize="14" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}" TextWrapping="Wrap" />
+                                    <TextBlock x:Name="EnvironmentToolsStatusText" Text="{DynamicResource Dynamic.Environment.Checking}" FontSize="12" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,2,0,0" />
+                                </StackPanel>
+                            </Grid>
+                            <Grid Margin="0,0,0,12" ColumnDefinitions="Auto,*">
+                                <Border Grid.Column="0" Width="8" Height="8" CornerRadius="4" Background="{DynamicResource MutedBrush}" VerticalAlignment="Top" Margin="0,6,10,0" />
+                                <StackPanel Grid.Column="1">
+                                    <TextBlock Text="{DynamicResource Static.Environment.Driver}" FontSize="14" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}" TextWrapping="Wrap" />
+                                    <TextBlock x:Name="EnvironmentDriverStatusText" Text="{DynamicResource Dynamic.Environment.Checking}" FontSize="12" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,2,0,0" />
+                                </StackPanel>
+                            </Grid>
+                            <Border Background="{DynamicResource SurfaceBrush}"
+                                    BorderBrush="{DynamicResource StrokeBrush}"
+                                    BorderThickness="1"
+                                    CornerRadius="10"
+                                    Padding="12"
+                                    Margin="0,4,0,0">
+                                <StackPanel>
+                                    <TextBlock x:Name="EnvironmentStatusText"
+                                               Text="{DynamicResource Dynamic.Environment.Checking}"
+                                               FontSize="13"
+                                               FontWeight="SemiBold"
+                                               Foreground="{DynamicResource InkBrush}"
+                                               TextWrapping="Wrap" />
+                                    <TextBlock Text="{DynamicResource Static.Environment.Guide}"
+                                               FontSize="12"
+                                               Foreground="{DynamicResource MutedBrush}"
+                                               TextWrapping="Wrap"
+                                               Margin="0,6,0,0" />
+                                </StackPanel>
+                            </Border>
+                            <WrapPanel Margin="0,12,0,0">
+                                <Button x:Name="EnvironmentCheckButton"
+                                        Content="{DynamicResource Static.Environment.Check}"
+                                        Click="OnEnvironmentCheck"
+                                        Theme="{StaticResource PrimaryButton}"
+                                        Margin="0,0,8,8" />
+                                <Button x:Name="EnvironmentContinueButton"
+                                        Content="{DynamicResource Static.Environment.Continue}"
+                                        Click="OnEnvironmentContinue"
+                                        Theme="{StaticResource SecondaryButton}"
+                                        IsEnabled="False"
+                                        Margin="0,0,8,8" />
+                            </WrapPanel>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </ScrollViewer>
+
+            <!-- ================= 功能首页 ================= -->
+            <ScrollViewer x:Name="HomePage"
+                          Grid.Column="0"
+                          Grid.ColumnSpan="3"
+                          VerticalScrollBarVisibility="Auto"
+                          HorizontalScrollBarVisibility="Disabled"
+                          IsVisible="False"
+                          Padding="0,0,14,0"
+                          Margin="0,0,0,12">
+                <StackPanel>
+                    <DockPanel>
+                        <Button x:Name="HomeEnvironmentButton"
+                                DockPanel.Dock="Right"
+                                Theme="{StaticResource SecondaryButton}"
+                                Content="{DynamicResource Static.Environment.HomeLink}"
+                                Click="OnShowEnvironment"
+                                FontSize="11"
+                                Padding="8,4"
+                                VerticalAlignment="Top"
+                                Margin="8,0,0,0" />
+                        <TextBlock Text="{DynamicResource Static.HomeTitle}" Classes="H1Text" />
+                    </DockPanel>
+                    <TextBlock Text="{DynamicResource Static.HomeLead}" Classes="BodyText" Margin="0,6,0,0" />
+                    <UniformGrid x:Name="HomeCards" Columns="2" Margin="0,12,0,0">
+                        <Button Tag="install" Click="OnSelectOperation" Theme="{StaticResource FunctionCard}" Margin="0,0,12,12">
+                            <Grid ColumnDefinitions="Auto,*">
+                                <Border Grid.Column="0" Classes="FunctionCardIcon">
+                                    <Path Data="M 7 2 H 17 V 22 H 7 Z M 10 19 H 14" Width="18" Height="18" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center" Stroke="{DynamicResource AccentBrush}" StrokeThickness="1.8" />
+                                </Border>
+                                <StackPanel Grid.Column="1">
+                                    <TextBlock Text="{DynamicResource Static.Function.Install.Title}" FontSize="16" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}" TextWrapping="Wrap" />
+                                    <TextBlock Text="{DynamicResource Static.Function.Install.Desc}" FontSize="12" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,6,0,0" />
+                                </StackPanel>
+                            </Grid>
+                        </Button>
+                        <Button IsEnabled="False" Theme="{StaticResource FunctionCard}" Margin="0,0,12,12">
+                            <Grid ColumnDefinitions="Auto,*">
+                                <Border Grid.Column="0" Classes="FunctionCardIcon">
+                                    <Path Data="M 12 3 V 15 M 7 10 L 12 15 L 17 10 M 4 20 H 20" Width="18" Height="18" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center" Stroke="{DynamicResource AccentBrush}" StrokeThickness="1.8" />
+                                </Border>
+                                <StackPanel Grid.Column="1">
+                                    <TextBlock Text="{DynamicResource Static.Function.Prepare.Title}" FontSize="16" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}" TextWrapping="Wrap" />
+                                    <TextBlock Text="{DynamicResource Static.Function.Prepare.Desc}" FontSize="12" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,6,0,0" />
+                                    <TextBlock Text="{DynamicResource Static.Mac.WindowsOnly}" FontSize="11" Foreground="{DynamicResource WarnBrush}" Margin="0,6,0,0" />
+                                </StackPanel>
+                            </Grid>
+                        </Button>
+                        <Button IsEnabled="False" Theme="{StaticResource FunctionCard}" Margin="0,0,12,12">
+                            <Grid ColumnDefinitions="Auto,*">
+                                <Border Grid.Column="0" Classes="FunctionCardIcon">
+                                    <Path Data="M 4 12 C 4 7.6 7.6 4 12 4 M 4 8 V 12 H 8 M 20 12 C 20 16.4 16.4 20 12 20 M 20 16 V 12 H 16" Width="18" Height="18" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center" Stroke="{DynamicResource AccentBrush}" StrokeThickness="1.8" />
+                                </Border>
+                                <StackPanel Grid.Column="1">
+                                    <TextBlock Text="{DynamicResource Static.Function.Repair.Title}" FontSize="16" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}" TextWrapping="Wrap" />
+                                    <TextBlock Text="{DynamicResource Static.Function.Repair.Desc}" FontSize="12" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,6,0,0" />
+                                    <TextBlock Text="{DynamicResource Static.Mac.WindowsOnly}" FontSize="11" Foreground="{DynamicResource WarnBrush}" Margin="0,6,0,0" />
+                                </StackPanel>
+                            </Grid>
+                        </Button>
+                        <Button IsEnabled="False" Theme="{StaticResource FunctionCard}" Margin="0,0,12,12">
+                            <Grid ColumnDefinitions="Auto,*">
+                                <Border Grid.Column="0" Classes="FunctionCardIcon">
+                                    <Path Data="M 5 10 H 14 C 17 10 17 16 14 16 H 9 M 5 10 L 9 6 M 5 10 L 9 14" Width="18" Height="18" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center" Stroke="{DynamicResource AccentBrush}" StrokeThickness="1.8" />
+                                </Border>
+                                <StackPanel Grid.Column="1">
+                                    <TextBlock Text="{DynamicResource Static.Function.Restore.Title}" FontSize="16" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}" TextWrapping="Wrap" />
+                                    <TextBlock Text="{DynamicResource Static.Function.Restore.Desc}" FontSize="12" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,6,0,0" />
+                                    <TextBlock Text="{DynamicResource Static.Mac.WindowsOnly}" FontSize="11" Foreground="{DynamicResource WarnBrush}" Margin="0,6,0,0" />
+                                </StackPanel>
+                            </Grid>
+                        </Button>
+                        <Button IsEnabled="False" Theme="{StaticResource FunctionCard}" Margin="0,0,12,12">
+                            <Grid ColumnDefinitions="Auto,*">
+                                <Border Grid.Column="0" Classes="FunctionCardIcon">
+                                    <Path Data="M 4 12 H 15 M 11 8 L 15 12 L 11 16 M 19 5 V 19" Width="18" Height="18" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center" Stroke="{DynamicResource AccentBrush}" StrokeThickness="1.8" />
+                                </Border>
+                                <StackPanel Grid.Column="1">
+                                    <TextBlock Text="{DynamicResource Static.Function.Uninstall.Title}" FontSize="16" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}" TextWrapping="Wrap" />
+                                    <TextBlock Text="{DynamicResource Static.Function.Uninstall.Desc}" FontSize="12" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,6,0,0" />
+                                    <TextBlock Text="{DynamicResource Static.Mac.WindowsOnly}" FontSize="11" Foreground="{DynamicResource WarnBrush}" Margin="0,6,0,0" />
+                                </StackPanel>
+                            </Grid>
+                        </Button>
+                        <Button IsEnabled="False" Theme="{StaticResource FunctionCard}" Margin="0,0,12,12">
+                            <Grid ColumnDefinitions="Auto,*">
+                                <Border Grid.Column="0" Classes="FunctionCardIcon">
+                                    <Path Data="M 12 3 V 14 M 8 10 L 12 14 L 16 10 M 4 19 H 20" Width="18" Height="18" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center" Stroke="{DynamicResource AccentBrush}" StrokeThickness="1.8" />
+                                </Border>
+                                <StackPanel Grid.Column="1">
+                                    <TextBlock Text="{DynamicResource Static.Function.GlobalBackup.Title}" FontSize="16" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}" TextWrapping="Wrap" />
+                                    <TextBlock Text="{DynamicResource Static.Function.GlobalBackup.Desc}" FontSize="12" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,6,0,0" />
+                                    <TextBlock Text="{DynamicResource Static.Mac.WindowsOnly}" FontSize="11" Foreground="{DynamicResource WarnBrush}" Margin="0,6,0,0" />
+                                </StackPanel>
+                            </Grid>
+                        </Button>
+                        <Button IsEnabled="False" Theme="{StaticResource FunctionCard}" Margin="0,0,12,12">
+                            <Grid ColumnDefinitions="Auto,*">
+                                <Border Grid.Column="0" Classes="FunctionCardIcon">
+                                    <Path Data="M 12 15 V 4 M 8 8 L 12 4 L 16 8 M 4 19 H 20" Width="18" Height="18" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center" Stroke="{DynamicResource AccentBrush}" StrokeThickness="1.8" />
+                                </Border>
+                                <StackPanel Grid.Column="1">
+                                    <TextBlock Text="{DynamicResource Static.Function.GlobalRestore.Title}" FontSize="16" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}" TextWrapping="Wrap" />
+                                    <TextBlock Text="{DynamicResource Static.Function.GlobalRestore.Desc}" FontSize="12" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,6,0,0" />
+                                    <TextBlock Text="{DynamicResource Static.Mac.WindowsOnly}" FontSize="11" Foreground="{DynamicResource WarnBrush}" Margin="0,6,0,0" />
+                                </StackPanel>
+                            </Grid>
+                        </Button>
+                    </UniformGrid>
+                </StackPanel>
+            </ScrollViewer>
+
+            <!-- ================= 支持项目 ================= -->
+            <ScrollViewer x:Name="SupportPage"
+                          Grid.Column="0"
+                          Grid.ColumnSpan="3"
+                          VerticalScrollBarVisibility="Auto"
+                          HorizontalScrollBarVisibility="Disabled"
+                          Padding="0,0,14,0"
+                          Margin="0,0,0,12"
+                          IsVisible="False">
+                <StackPanel>
+                    <Button Content="{DynamicResource Static.SupportBack}"
+                            Theme="{StaticResource GhostButton}"
+                            Click="OnCloseSupport"
+                            HorizontalAlignment="Left"
+                            Padding="0,4"
+                            Margin="0,0,0,8" />
+                    <TextBlock Text="{DynamicResource Static.SupportTitle}" Classes="H1Text" />
+                    <TextBlock Text="{DynamicResource Static.SupportLead}" Classes="BodyText" Margin="0,8,0,0" />
+                    <TextBlock Text="{DynamicResource Static.SupportSponsor}" Classes="BodyText" Margin="0,10,0,0" />
+                    <Border Classes="CardBorder" Margin="0,16,0,16">
+                        <StackPanel>
+                            <Image Source="/Assets/sponsor-zh.png"
+                                   MaxWidth="1000"
+                                   Stretch="Uniform"
+                                   StretchDirection="DownOnly"
+                                   HorizontalAlignment="Left" />
+                            <TextBlock Text="{DynamicResource Static.SupportNote}" Classes="BodyInkText" FontWeight="SemiBold" Margin="0,14,0,0" />
+                            <TextBlock Text="{DynamicResource Static.SupportTail}" Classes="CaptionText" Margin="0,6,0,0" />
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </ScrollViewer>
+        </Grid>
+
+        <!-- ================= 底栏：作者在左，免费声明居中，主操作在右 ================= -->
+        <Border Grid.Row="2"
+                Background="{DynamicResource SurfaceBrush}"
+                BorderBrush="{DynamicResource StrokeBrush}"
+                BorderThickness="0,1,0,0"
+                Padding="20,10">
+            <Grid ColumnDefinitions="Auto,Auto,*,Auto">
+                <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="{DynamicResource Static.AuthorLabel}" FontSize="11" Foreground="{DynamicResource MutedBrush}" VerticalAlignment="Center" Margin="0,0,6,0" />
+                        <TextBlock Text="{DynamicResource Static.AuthorName}" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}" VerticalAlignment="Center" />
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" Margin="0,2,0,0">
+                        <Button Content="{DynamicResource Static.AuthorBilibili}"
+                                Theme="{StaticResource GhostButton}"
+                                Click="OnOpenBilibili"
+                                ToolTip.Tip="https://space.bilibili.com/258786"
+                                FontSize="11"
+                                Padding="0,2"
+                                HorizontalAlignment="Left" />
+                        <Button Content="{DynamicResource Static.AuthorGithub}"
+                                Theme="{StaticResource GhostButton}"
+                                Click="OnOpenGithub"
+                                ToolTip.Tip="https://github.com/mydanyi"
+                                FontSize="11"
+                                Padding="0,2"
+                                Margin="12,0,0,0"
+                                HorizontalAlignment="Left" />
+                    </StackPanel>
+                </StackPanel>
+                <Border Grid.Column="1" Width="1" Background="{DynamicResource StrokeBrush}" Margin="16,2" />
+                <TextBlock Grid.Column="2"
+                           Text="{DynamicResource Static.FreeWarn}"
+                           FontSize="12.5"
+                           FontWeight="SemiBold"
+                           Foreground="{DynamicResource InkBrush}"
+                           TextWrapping="Wrap"
+                           VerticalAlignment="Center"
+                           Margin="0,0,16,0"
+                           ToolTip.Tip="{DynamicResource Static.FreeWarnDetail}" />
+                <TextBlock x:Name="HomeFooterHint"
+                           Grid.Column="3"
+                           Text="{DynamicResource Static.HomeFooterHint}"
+                           FontSize="12.5"
+                           Foreground="{DynamicResource MutedBrush}"
+                           TextWrapping="Wrap"
+                           VerticalAlignment="Center"
+                           Margin="0,0,4,0"
+                           IsVisible="False" />
+                <StackPanel x:Name="WorkflowButtons"
+                            Grid.Column="3"
+                            Orientation="Horizontal"
+                            VerticalAlignment="Center"
+                            IsVisible="False">
+                    <Button x:Name="PrevButton"
+                            Content="{DynamicResource Static.Previous}"
+                            Click="OnPreviousPage"
+                            IsEnabled="False"
+                            Theme="{StaticResource SecondaryButton}" />
+                    <Button x:Name="NextButton"
+                            Content="{DynamicResource Static.Next}"
+                            Click="OnNextPage"
+                            Theme="{StaticResource PrimaryButton}"
+                            Margin="10,0,0,0" />
+                    <Button x:Name="ActionButton"
+                            Content="{DynamicResource Static.ActionInstall}"
+                            Click="OnExecuteSelectedWorkflow"
+                            IsEnabled="False"
+                            Theme="{StaticResource PrimaryButton}"
+                            Margin="10,0,0,0"
+                            IsVisible="False" />
+                </StackPanel>
+            </Grid>
+        </Border>
+    </Grid>
+</Window>

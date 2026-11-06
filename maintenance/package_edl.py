@@ -50,6 +50,28 @@ FIXED_PINS = {
     "python": (12601679, "a93abe456ab01bd96d7a085b3cdb6566b3063f4241360d114142fbdb07f0a310"),
 }
 
+# macOS (Apple silicon) toolchain: the same modified edl-ng built for osx-arm64 with its libusb dylib and
+# no Python runtime (the install route does not use it). Must match EdlToolchain.MacOSPlatform.
+MACOS_ROLES = (
+    ("client", "tools/edl-ng"),
+    ("usbLibrary", "tools/libusb-1.0.dylib"),
+    ("license", "tools/LICENSE.txt"),
+    ("avb", "scripts/avb_stock.py"),
+    ("avbCli", "scripts/avb_stock_cli.py"),
+    ("gpt", "scripts/portable_gpt.py"),
+    ("gptCli", "scripts/edl_gpt_cli.py"),
+)
+
+# The macOS client has no frozen pin: it is always the osx-arm64 edl-ng of the same build, passed with
+# --build-pins-json.
+MACOS_PINS: dict[str, tuple[int, str]] = {}
+
+# Toolchain platforms: the manifest "platform" field is omitted for Windows, the original format.
+PLATFORMS = {
+    "windows-x64": {"roles": COMMON_ROLES, "pins": FIXED_PINS, "manifest": None},
+    "macos-arm64": {"roles": MACOS_ROLES, "pins": MACOS_PINS, "manifest": "macos-arm64"},
+}
+
 G4_PROFILE = {
     "profileId": "g4-9008-259",
     "model": "TB322FC",
@@ -246,16 +268,19 @@ def _resolve_g5_materials(profile: dict, args: argparse.Namespace) -> dict[str, 
     return sources
 
 
-def _effective_pins(args: argparse.Namespace) -> dict[str, tuple[int, str]]:
-    """Merge build-time client pin (if supplied) over FIXED_PINS.
+def _effective_pins(args: argparse.Namespace, platform: dict) -> dict[str, tuple[int, str]]:
+    """Merge build-time client pin (if supplied) over the platform's frozen pins.
 
     Only the `client` entry may be overridden by --build-pins-json; every other
     pin (python and all G4/G5/TB710FU material pins via the profile) is preserved.
-    Without the flag the frozen client pin in FIXED_PINS is used unchanged.
+    Without the flag the frozen client pin of the platform is used unchanged; a
+    platform without one (macos-arm64) requires the flag.
     """
-    pins = dict(FIXED_PINS)
+    pins = dict(platform["pins"])
     build_pins_path = getattr(args, "build_pins_json", None)
     if not build_pins_path:
+        if "client" not in pins:
+            raise PackagingError("this platform requires --build-pins-json for the client pin")
         return pins
     try:
         with open(build_pins_path, "r", encoding="utf-8") as handle:
@@ -284,11 +309,21 @@ def _effective_pins(args: argparse.Namespace) -> dict[str, tuple[int, str]]:
 
 def package(args: argparse.Namespace) -> dict:
     profile = _select_profile(args)
-    effective_pins = _effective_pins(args)
+    platform = PLATFORMS[getattr(args, "platform", None) or "windows-x64"]
+    effective_pins = _effective_pins(args, platform)
+    platform_roles = platform["roles"]
+    platform_role_names = {role for role, _arcname in platform_roles}
+    flag_by_role = {role: flag for role, flag, _help in COMMON_FLAGS}
 
     common_sources: dict[str, str] = {}
-    for role, _flag, _help in COMMON_FLAGS:
-        common_sources[role] = _resolve_input(role, getattr(args, role))
+    for role, _arcname in platform_roles:
+        value = getattr(args, role, None)
+        if not value:
+            raise PackagingError(f"{flag_by_role[role]} is required for this platform")
+        common_sources[role] = _resolve_input(role, value)
+    for role, flag, _help in COMMON_FLAGS:
+        if role not in platform_role_names and getattr(args, role, None):
+            raise PackagingError(f"{flag} is not part of this platform's toolchain")
 
     # Material roles derived from the selected profile.
     material_roles = tuple(profile["materials"])
@@ -306,7 +341,7 @@ def package(args: argparse.Namespace) -> dict:
 
     # Combined input set and arcname table for the selected profile.
     roles: list[tuple[str, str, int, str]] = []
-    for role, arcname in COMMON_ROLES:
+    for role, arcname in platform_roles:
         roles.append((role, arcname, 0, ""))
     for role, arcname, size, sha in material_roles:
         roles.append((role, arcname, size, sha))
@@ -357,11 +392,13 @@ def package(args: argparse.Namespace) -> dict:
         "model": profile["model"],
         "androidBuild": profile["androidBuild"],
         "hardwareId": profile["hardwareId"],
-        "entries": [
-            {"role": role, "path": arcname, "bytes": sizes[role], "sha256": hashes[role]}
-            for role, arcname, *_rest in roles
-        ],
     }
+    if platform["manifest"] is not None:
+        manifest["platform"] = platform["manifest"]
+    manifest["entries"] = [
+        {"role": role, "path": arcname, "bytes": sizes[role], "sha256": hashes[role]}
+        for role, arcname, *_rest in roles
+    ]
     manifest_bytes = json.dumps(manifest, ensure_ascii=False, separators=(",", ":")).encode("utf-8") + b"\n"
 
     parent = os.path.dirname(output)
@@ -414,8 +451,15 @@ def main(argv: list[str] | None = None) -> int:
         metavar="NAME",
         help="trusted profile: tb322fc (G4, default), tb323fu (G5) or tb710fu",
     )
+    parser.add_argument(
+        "--platform",
+        dest="platform",
+        default="windows-x64",
+        choices=sorted(PLATFORMS),
+        help="toolchain platform: windows-x64 (default) or macos-arm64 (no --python-zip)",
+    )
     for role, flag, help_text in COMMON_FLAGS:
-        parser.add_argument(flag, dest=role, required=True, metavar="PATH", help=help_text)
+        parser.add_argument(flag, dest=role, metavar="PATH", help=help_text)
     parser.add_argument(
         "--firehose",
         dest="firehose",

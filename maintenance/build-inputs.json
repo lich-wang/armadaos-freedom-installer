@@ -33,7 +33,12 @@
       "source": "https://github.com/LibUsbDotNet/LibUsbDotNet",
       "sourceCommit": "77ef699a7024af055d7c6ed625dc480463c2eec7",
       "sha256": "6efd58060d41319e1168bff179755017b8db2dccb37d29ac935ba46cd4ede7c9",
-      "version": "3.0.167-alpha"
+      "version": "3.0.167-alpha",
+      "extractMacos": {
+        "bytes": 164592,
+        "sha256": "55e3cdeff3b8000fad41b5b4faac8c95335708ffce5a191c151e2931f72e83fe",
+        "path": "runtimes/osx-arm64/native/libusb-1.0.dylib"
+      }
     },
     {
       "name": "libusb-COPYING.txt",
