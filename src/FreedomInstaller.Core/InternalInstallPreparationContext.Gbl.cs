@@ -39,7 +39,7 @@ internal sealed partial class InternalInstallPreparationContext
     internal InternalInstallBootTrustMode DirectBootTrustMode =>
         _directGblPlan is not null
             ? InternalInstallBootTrustMode.GblPreserveOem
-            : _directAospPreserved
+            : _directPreservedAvbRoles is not null
                 ? InternalInstallBootTrustMode.AospPreserved
                 : InternalInstallBootTrustMode.AospResigned;
 
@@ -53,14 +53,16 @@ internal sealed partial class InternalInstallPreparationContext
     /// <summary>
     /// The early gate of the AOSP-preserving route: every source slot's original root vbmeta must be signed by
     /// the pinned AOSP key and chain boot to that same key. Nothing else is required of the other chains,
-    /// because this route never rewrites them.
+    /// because this route never rewrites them. Returns the authenticated vbmeta roles, which every original
+    /// device capture then reads again, so the live roots must still be the authenticated backup bytes.
     /// </summary>
-    private static async Task RequireDirectPreservedAospChainAsync(
+    private static async Task<IReadOnlyList<string>> RequireDirectPreservedAospChainAsync(
         IReadOnlyDictionary<string, string> sourceSlots,
         BackupFacts backup,
         CancellationToken ct)
     {
         var sources = new SortedSet<string>(sourceSlots.Values, StringComparer.Ordinal);
+        var roles = new List<string>(sources.Count);
         foreach (string source in sources)
         {
             ct.ThrowIfCancellationRequested();
@@ -76,7 +78,11 @@ internal sealed partial class InternalInstallPreparationContext
                     "requires-compatible-bootloader: the original vbmeta_" + source + " root or its boot chain is "
                     + "not the AOSP signing key, so a boot-only install would not verify.");
             }
+
+            roles.Add("vbmeta_" + source);
         }
+
+        return roles.AsReadOnly();
     }
 
     internal VerifiedEdlFile GblEfispCandidate => RequireDirectGblPlan().Inputs.EfispCandidate;
