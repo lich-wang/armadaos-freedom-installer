@@ -69,6 +69,12 @@
                       LogicalName="FreedomInstaller.EdlTools.G5.zip" />
   </ItemGroup>
 
+  <!-- Bundled TB710FU EDL archive: separate from G4/G5, embedded under its own fixed logical name; never downloaded or generated. -->
+  <ItemGroup Condition="'$(BundledEdlTb710fuArchive)' != '' and Exists('$(BundledEdlTb710fuArchive)')">
+    <EmbeddedResource Include="$(BundledEdlTb710fuArchive)"
+                      LogicalName="FreedomInstaller.EdlTools.TB710FU.zip" />
+  </ItemGroup>
+
 
   <!-- Bundled Qualcomm USB driver pack: external build input, embedded byte-for-byte under a fixed logical name; never downloaded or repacked. -->
   <ItemGroup Condition="'$(BundledQualcommDriverArchive)' != '' and Exists('$(BundledQualcommDriverArchive)')">
@@ -111,7 +117,9 @@
        platform-tools are required for device queries, the bundled EDL archive (G4) and the separate
        G5 EDL archive are both required for the EDL flash path of their respective generations, and the
        two pinned EDL raw boot helpers are required by the 9008 direct install. Those five are
-       validated here. Nothing is ever downloaded by the build.
+       validated here. The TB710FU EDL archive is optional: its model has no write route yet, and
+       without it the TB710FU 9008 flows stop with the existing "tools missing" message. When it is
+       set, it must exist. Nothing is ever downloaded by the build.
        The externally supplied Qualcomm USB driver pack is validated here as well. -->
   <Target Name="ValidateBundledPlatformToolsArchive" BeforeTargets="PrepareForPublish;Publish">
     <Error Condition="'$(PublishSingleFile)' == 'true' and '$(BundledPlatformToolsArchive)' == ''"
@@ -132,6 +140,9 @@
     <Error Condition="'$(PublishSingleFile)' == 'true' and '$(BundledEdlG5Archive)' != '' and !Exists('$(BundledEdlG5Archive)')"
            Code="FRDM1018"
            Text="BundledEdlG5Archive '$(BundledEdlG5Archive)' does not exist. Point it at the existing reviewed Y700 Gen5 EDL tool archive; the build never downloads or generates it." />
+    <Error Condition="'$(PublishSingleFile)' == 'true' and '$(BundledEdlTb710fuArchive)' != '' and !Exists('$(BundledEdlTb710fuArchive)')"
+           Code="FRDM1026"
+           Text="BundledEdlTb710fuArchive '$(BundledEdlTb710fuArchive)' does not exist. Point it at the existing reviewed TB710FU EDL tool archive; the build never downloads or generates it." />
     <Error Condition="'$(PublishSingleFile)' == 'true' and '$(BundledEdlRawPacker)' == ''"
            Code="FRDM1013"
            Text="BundledEdlRawPacker is not set. Set it to the absolute path of the existing pinned EDL raw packer executable before publishing the single-file installer; the build never downloads it." />

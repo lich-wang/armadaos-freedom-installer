@@ -19,6 +19,6 @@
 
 v3 的描述符绑定恢复分区 UUID、安装 UUID、型号和载荷边界。恢复校验仍验证压缩载荷、描述符及保留区；设置槽可被启动器交替更新，不能因此将完整恢复资料判定为损坏。v2 则继续要求载荷后的区域全部为零。
 
-完整字节协议及各型号启动器支持范围见[启动器存储设置](https://github.com/mydanyi/armadaos-freedom/blob/main/devices/lenovo-tb323fu/boot/kshim-success-source/docs/storage-settings.md)。目录名不代表所有型号都启用了相同功能。
+完整字节协议及各型号启动器支持范围见[启动器存储设置](https://github.com/mydanyi/armadaos-freedom/blob/main/devices/lenovo-tb323fu/boot/kshim-success-source/docs/storage-settings.md)。目录名不代表所有型号都启用了相同功能。TB710FU 使用启动器设置区型号编号 3（kShimC `device_board` 枚举中的空闲值；不认识它的旧版 kShimC 按未知型号处理）。
 
 对应代码：`InternalInstallArtifacts` 负责生成和验证，`BootSettingsRegion` 定义 v3 设置区，`InternalInstallPreparationContext` 在写入前绑定备份与安装计划。`maintenance/BackupSettingsUpgrade` 是旧 v2 镜像的离线升级准备工具，仅输出经校验的修改区域，不直接刷写设备。

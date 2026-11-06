@@ -251,6 +251,9 @@ public sealed partial class EdlUninstallBackend : IUserdataUninstallBackend, IDi
             throw new ArgumentNullException(nameof(runner));
         }
 
+        // A model whose uninstall write route is not open is refused before any progress, work root or device step.
+        DeviceModelRoutes.RequireWriteRoute(tools.Profile?.Model);
+
         // The standard route requires the whole menu context or none of it.
         bool standard = currentBackup is not null || menuPlan is not null
             || actualCurrentSlot is not null;

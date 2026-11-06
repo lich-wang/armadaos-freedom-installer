@@ -28,6 +28,7 @@
   "Static.BootCompatAndroidNote": "The Android report is used for route pre-checks; the existing Fastboot flow still needs separate confirmation.",
   "Static.BootCompatTb322Fc": "TB322FC: some firmware can boot without unlocking; read the current firmware first, then check the applicable conditions.",
   "Static.BootCompatTb323Fu": "Gen-5 TB323FU: the write flow has not been verified. Do not use the gen-4 loader or restore plan.",
+  "Static.BootCompatTb710Fu": "TB710FU (Xiaoxin Pad Pro GT): only identification, its 9008 tools and the read-only global backup are open; install, maintenance, uninstall and restore writes are not open yet.",
   "Static.BootCompatTitle": "Boot compatibility",
   "Static.BootPending": "Unconfirmed",
   "Static.BrandSubtitle": "SteamOS-like Linux for ARM tablets · Steam Gaming Mode, KDE Plasma and kShimC multi-boot",

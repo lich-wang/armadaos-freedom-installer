@@ -38,7 +38,7 @@ python3 -B maintenance/build_installer_macos.py --work-dir "$PWD/artifacts/build
 1. 校验仓库内的厂商加载器、驱动及 AOSP 公开测试素材。
 2. 从固定官方地址下载平台工具、嵌入式 Python、LibUsbDotNet 官方包、libusb 许可原文和上游 GBL EFI，核对长度与 SHA-256。
 3. 编译 `tools/edl-ng` 与 `tools/boot-packers`，生成三个 Windows 工具。
-4. 从本次工具产物生成编译时固定哈希，分别制作四代、五代 9008 工具包，并从仓库原始驱动文件制作驱动归档。
+4. 从本次工具产物生成编译时固定哈希，分别制作四代、五代与 TB710FU 的 9008 工具包，并从仓库原始驱动文件制作驱动归档。
 5. 生成 MSBuild 输入配置，编译并打包单 EXE。
 
 每次构建会生成 `build/build-record.json`，记录源码文件哈希、上游提交、本次工具哈希和产物路径。程序使用编进程序集的本次哈希校验工具，运行时不接受外部配置覆盖。修改工具源码后重新完整构建即可，无需手工替换旧二进制的哈希常量。
@@ -56,7 +56,7 @@ python3 -B maintenance/build_installer_macos.py --work-dir "$PWD/artifacts/build
 | Python | python.org 官方 3.14.8 Windows AMD64 嵌入式 ZIP。 |
 | libusb DLL | 从 LibUsbDotNet 3.0.167-alpha 官方 NuGet 包提取 Windows x64 文件，与原安装器使用的 DLL 内容一致。 |
 | GBL EFI | 从 miner7222/gbl_root_baldur 的 6.2.192-mod2 固定版本取得 PRC / ROW 文件；源码仓库与提交记录在清单中。 |
-| 四代、五代加载器 | 原件分别在 `vendor/qualcomm/g4`、`vendor/qualcomm/g5`，两者独立打包。 |
+| 四代、五代、TB710FU 加载器 | 原件分别在 `vendor/qualcomm/g4`、`vendor/qualcomm/g5`、`vendor/qualcomm/tb710fu`，各自独立打包。TB710FU 的加载器取自 ZUXOS 1.5.04.495 免解锁补充包的 `EDL/xbl_s_devprg_ns.melf`。 |
 | Qualcomm 驱动 | 2.1.5.2 AMD64 原始文件在 `vendor/qualcomm/driver`，保留签名和 `serial/amd64` 目录结构。 |
 | AOSP 测试素材 | 官方公开的 RSA4096 测试文件在 `vendor/aosp`，附官方出处、哈希和上游许可原文。 |
 

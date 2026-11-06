@@ -122,7 +122,7 @@ public static partial class PackageImporter
 
     private const int CopyBufferSize = 80 * 1024;
 
-    private static readonly string[] SupportedModels = { "TB322FC", "TB323FU" };
+    private static readonly string[] SupportedModels = { "TB322FC", "TB323FU", "TB710FU" };
 
     /// <summary>
     /// Imports <paramref name="sourcePath"/> for <paramref name="expectedModel"/> and
@@ -215,7 +215,7 @@ public static partial class PackageImporter
 
         if (!IsSupportedModel(expectedModel))
         {
-            reasons.Add($"期望型号 {expectedModel} 不在支持列表（TB322FC / TB323FU）内，拒绝使用。");
+            reasons.Add($"期望型号 {expectedModel} 不在支持列表（TB322FC / TB323FU / TB710FU）内，拒绝使用。");
             return Invalid(sourcePath, expectedModel, reasons);
         }
 

@@ -18,6 +18,8 @@
 
 四代 **TB322FC** 与五代 **TB323FU** 分别使用各自的设备配置与 9008 工具。程序自动识别型号，连接多台设备时需选择目标。所有 Y700 平板均使用**长边 USB-C 接口**连接电脑。
 
+小新 Pad Pro GT **TB710FU**（SM8650）支持型号识别、独立的 9008 工具配置、只读校验（含全局备份）和安装到内部存储；维护、卸载与全局恢复的写入路线尚未开放，程序会在进入 9008 或写入之前停止。安装要求平板已刷入 ZUXOS 1.5.04.495 免解锁启动链（两个槽位的 vbmeta 顶层为 AOSP 测试密钥签名，并把 boot 链到同一把密钥）：安装只重新签名并写入 boot，vbmeta、vbmeta_system 和 recovery 保持不变。这台平板的引导程序在进入 fastboot 时会掉进 900E 崩溃转储模式，所以第 1 步不进 fastboot，锁定状态和当前槽位改从安卓属性读取。经 ADB 识别时，安卓系统要报告 `TB710FU` 型号，或在 `ro.product.bootimage.model` 里报告（刷了移植系统，如 HyperOS 移植包）。全局备份要求 LUN0 仍是原始分区布局（userdata 未缩小、没有 `ARMADA_*` 分区）。
+
 TF 卡安装暂不开放。Windows 安装器不再携带旧 Linux 维护工具包，内部安装使用 9008 直接写入分区镜像。
 
 另有 macOS（Apple 芯片）版：界面、文字与 Windows 版相同，目前只提供“安装到内部存储”，其余功能卡片保留但不可用。9008 通过 libusb 直接访问，不需要安装驱动；adb 使用本机已安装的 platform-tools（例如 Homebrew 的 `android-platform-tools`）。构建方法见[从源码构建](docs/build.md#macos-版)。

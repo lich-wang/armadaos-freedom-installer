@@ -191,6 +191,8 @@ public sealed class InternalInstallDeviceCheck
     private const string G4Model = "TB322FC";
     private const string G5Model = "TB323FU";
     private const string G4Product = "elden_prc_wifi";
+    private const string Tb710fuModel = DeviceModelRoutes.Tb710fuModel;
+    private const string Tb710fuProduct = "topaz_prc_wifi";
 
     private static readonly Regex SerialPattern = new("^[A-Za-z0-9-]{1,64}$", RegexOptions.CultureInvariant);
     private static readonly TimeSpan RebootTimeout = TimeSpan.FromSeconds(10);
@@ -323,6 +325,15 @@ public sealed class InternalInstallDeviceCheck
                 false,
                 InternalDeviceCheckStage.ReadingAndroid,
                 exception.Message);
+        }
+
+        // Fork only: the TB710FU ABL (ZUXOS 495) falls into the 900E crash-dump mode when it is asked to enter
+        // fastboot (reproduced 2026-11-04 with a plain "adb reboot bootloader"), so this model never leaves
+        // Android here. Its boot facts come from the properties the bootloader handed to Android.
+        if (string.Equals(android.Identity.Model, DeviceModelRoutes.Tb710fuModel, StringComparison.Ordinal))
+        {
+            return await CheckFromAndroidBootPropertiesAsync(android, expectedSerial, progress, token)
+                .ConfigureAwait(false);
         }
 
         var cancelled = false;
@@ -1018,12 +1029,22 @@ public sealed class InternalInstallDeviceCheck
         }
     }
 
-    /// <summary>G4 accepts only its own product aliases; G5 accepts any non-G4 product.</summary>
+    /// <summary>
+    /// G4 accepts only its own product aliases; G5 accepts any non-G4 product; TB710FU accepts only its own
+    /// product aliases (<c>topaz_prc_wifi</c> or the model name itself).
+    /// </summary>
     private static bool IsAcceptedProduct(string model, string product)
     {
         if (string.IsNullOrWhiteSpace(product))
         {
             return false;
+        }
+
+        // TB710FU is decided on its own aliases before the G4/G5 expression below, which stays unchanged.
+        if (string.Equals(model, Tb710fuModel, StringComparison.Ordinal))
+        {
+            return string.Equals(product, Tb710fuModel, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(product, Tb710fuProduct, StringComparison.OrdinalIgnoreCase);
         }
 
         var isG4Product = string.Equals(product, G4Model, StringComparison.OrdinalIgnoreCase)
@@ -1041,6 +1062,69 @@ public sealed class InternalInstallDeviceCheck
         return string.IsNullOrWhiteSpace(value)
             ? await ReadShellPropertyAsync(serial, "ro.boot.serialno", token).ConfigureAwait(false)
             : value;
+    }
+
+    /// <summary>
+    /// Fork only (TB710FU): Step 1 without fastboot. The lock state must be reported consistently by both
+    /// ro.boot.flash.locked and ro.boot.vbmeta.device_state; the slot comes from ro.boot.slot_suffix; the
+    /// serial is the actual serial already proven above. The OTA snapshot state cannot be read without
+    /// fastboot or root and is taken as Completed: this tablet's Android is flashed over 9008, never by an OTA.
+    /// No reboot is issued, so the return to Android is trivially verified.
+    /// </summary>
+    private async Task<InternalDeviceCheckResult> CheckFromAndroidBootPropertiesAsync(
+        AndroidMaintenanceIdentity android,
+        string expectedSerial,
+        IProgress<InternalDeviceCheckProgress>? progress,
+        CancellationToken token)
+    {
+        progress?.Report(new InternalDeviceCheckProgress(
+            InternalDeviceCheckStage.CheckingBootloader,
+            "TB710FU：不进入 fastboot，改用 Android 启动属性"));
+
+        string flashLocked = await ReadShellPropertyAsync(expectedSerial, "ro.boot.flash.locked", token)
+            .ConfigureAwait(false);
+        string deviceState = await ReadShellPropertyAsync(expectedSerial, "ro.boot.vbmeta.device_state", token)
+            .ConfigureAwait(false);
+        string slotSuffix = await ReadShellPropertyAsync(expectedSerial, "ro.boot.slot_suffix", token)
+            .ConfigureAwait(false);
+
+        BootloaderState lockState = (flashLocked, deviceState) switch
+        {
+            ("1", "locked") => BootloaderState.Locked,
+            ("0", "unlocked") => BootloaderState.Unlocked,
+            _ => BootloaderState.Unknown,
+        };
+        string? currentSlot = slotSuffix switch
+        {
+            "_a" => "a",
+            "_b" => "b",
+            _ => null,
+        };
+
+        string? error = null;
+        if (lockState == BootloaderState.Unknown)
+        {
+            error = $"Android 报告的锁定状态不一致或未知（ro.boot.flash.locked=「{flashLocked}」，"
+                + $"ro.boot.vbmeta.device_state=「{deviceState}」），拒绝判定通过。";
+        }
+        else if (currentSlot is null)
+        {
+            error = $"Android 报告的 ro.boot.slot_suffix「{slotSuffix}」不是 _a 或 _b，拒绝判定通过。";
+        }
+
+        progress?.Report(new InternalDeviceCheckProgress(InternalDeviceCheckStage.Completed));
+
+        return new InternalDeviceCheckResult(
+            android,
+            expectedSerial,
+            null,
+            lockState,
+            OtaUpdateState.Completed,
+            AndroidReturnState.Verified,
+            false,
+            error is null ? null : InternalDeviceCheckStage.CheckingBootloader,
+            error,
+            currentSlot);
     }
 
     private async Task<string> ReadShellPropertyAsync(string serial, string property, CancellationToken token)

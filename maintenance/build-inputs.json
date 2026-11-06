@@ -140,6 +140,11 @@
       "bytes": 1174496,
       "sha256": "5d277384cac8fb1512562028ca30c67b2314810ad26b2546a6c8653119a056d4",
       "path": "vendor/qualcomm/g5/xbl_sc.elf"
+    },
+    {
+      "bytes": 1573224,
+      "sha256": "ad4689b1c52458250d46829ee46a89ec974e69f8e82eee8d4950427919e0b9eb",
+      "path": "vendor/qualcomm/tb710fu/firehose.melf"
     }
   ],
   "sources": [
@@ -187,6 +192,7 @@
     "aosp": "Public AOSP AVB test data, original upstream bytes",
     "driver": "Qualcomm 2.1.5.2 AMD64, 2023-08-24; unchanged DriverStore files; vendor terms",
     "g4": "TB322FC_CN_OPEN_USER_Q00041.1_W_ZUXOS_1.5.10.259_ST_260611",
-    "g5": "QCTool-2026.3.21-1/lenovo/devprg_legion-y700-5"
+    "g5": "QCTool-2026.3.21-1/lenovo/devprg_legion-y700-5",
+    "tb710fu": "TB710FU ZUXOS_1.5.04.495_WITHOUT_UBL/EDL/xbl_s_devprg_ns.melf"
   }
 }

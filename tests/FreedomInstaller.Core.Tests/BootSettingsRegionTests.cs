@@ -29,6 +29,7 @@ public sealed class BootSettingsRegionTests
     [Theory]
     [InlineData("TB322FC", 1u)]
     [InlineData("TB323FU", 2u)]
+    [InlineData("TB710FU", 3u)]
     public void Descriptor_matches_the_bootloader_wire_format(string model, uint board)
     {
         var d = Descriptor(model);

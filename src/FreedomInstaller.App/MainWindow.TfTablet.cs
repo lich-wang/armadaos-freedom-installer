@@ -1288,6 +1288,10 @@ namespace FreedomInstaller.App
                     {
                         TfTabletFail(M("Dynamic.TfInstall.PrepareFailed"), null);
                     }
+                    catch (Exception ex) when (DeviceModelRoutes.IsRouteRefusal(ex))
+                    {
+                        TfTabletFail(M("Dynamic.Model.RoutePendingInEdl", DeviceModelRoutes.Tb710fuModel), null);
+                    }
                     catch (Exception ex)
                     {
                         TfTabletFail(ex);

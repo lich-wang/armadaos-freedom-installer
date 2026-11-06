@@ -166,6 +166,46 @@ public sealed class TransportTests
     }
 
     [Fact]
+    public async Task ReadAdbIdentity_Tb710fu_IsIdentifiedAndLeavesBootloaderUnknown()
+    {
+        var runner = new FakeCommandRunner();
+        runner.Expect(
+            AdbPath,
+            new[] { "-s", Serial, "shell", "getprop" },
+            new ProcessResult(
+                0,
+                "[ro.product.model]: [TB710FU]\n" +
+                "[ro.product.vendor.model]: [TB710FU]\n" +
+                "[ro.product.name]: [TB710FU_PRC]\n" +
+                "[ro.boot.flash.locked]: [1]\n",
+                string.Empty));
+
+        var identity = await TransportFor(runner).ReadAdbIdentityAsync(Serial);
+
+        // Identification only: the confirmed lock state stays unknown and only one query ran.
+        Assert.Equal("TB710FU", identity.Model);
+        Assert.Equal(BootloaderState.Unknown, identity.BootloaderState);
+        Assert.Equal(1, runner.CommandCount);
+    }
+
+    [Fact]
+    public async Task ReadAdbIdentity_HyperOsPortModel_Throws()
+    {
+        var runner = new FakeCommandRunner();
+        runner.Expect(
+            AdbPath,
+            new[] { "-s", Serial, "shell", "getprop" },
+            new ProcessResult(
+                0,
+                "[ro.product.model]: [25091RP04C]\n" +
+                "[ro.product.name]: [piano]\n",
+                string.Empty));
+
+        await Assert.ThrowsAsync<InvalidOperationException>(
+            () => TransportFor(runner).ReadAdbIdentityAsync(Serial));
+    }
+
+    [Fact]
     public async Task ReadAdbIdentity_ContradictoryModelFields_Throws()
     {
         var runner = new FakeCommandRunner();

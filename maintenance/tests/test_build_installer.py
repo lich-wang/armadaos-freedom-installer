@@ -32,6 +32,7 @@ DRIVER_CAT = b"cat\n"
 DRIVER_SYS = b"sys\n"
 G4_MELF = b"g4-melf\n"
 G5_MBN = b"g5-mbn\n"
+TB710FU_MELF = b"tb710fu-melf\n"
 
 
 def _sha(b):
@@ -65,6 +66,7 @@ def _build_fixture_repo(root):
         "vendor/qualcomm/driver/qcser.cat": DRIVER_CAT,
         "vendor/qualcomm/driver/serial/amd64/qcusbser.sys": DRIVER_SYS,
         "vendor/qualcomm/g4/firehose.melf": G4_MELF,
+        "vendor/qualcomm/tb710fu/firehose.melf": TB710FU_MELF,
     }
     # fabricate G5 loader files (only existence validation needed by prepare)
     for name in (
@@ -334,9 +336,9 @@ class PrepareTests(unittest.TestCase):
             self.assertTrue(actual.is_file())
             self.assertEqual(actual.stat().st_size, record["tools"][name]["bytes"])
 
-        # package called twice - once per profile - and both share the same
-        # freshly generated pins file
-        self.assertEqual(pkg_mock.call_count, 2)
+        # package called once per profile, and all share the same freshly
+        # generated pins file
+        self.assertEqual(pkg_mock.call_count, 3)
         seen_profiles = set()
         pins_seen = set()
         for call in pkg_mock.call_args_list:
@@ -345,10 +347,10 @@ class PrepareTests(unittest.TestCase):
             self.assertTrue(Path(ns.python).is_file())
             seen_profiles.add(ns.profile)
             pins_seen.add(Path(ns.build_pins_json).resolve())
-        self.assertEqual(seen_profiles, {"tb322fc", "tb323fu"})
+        self.assertEqual(seen_profiles, {"tb322fc", "tb323fu", "tb710fu"})
         self.assertEqual(
             pins_seen, {Path(record["toolPinsJson"]).resolve()},
-            "both profiles must receive the same fresh tool-pins file",
+            "every profile must receive the same fresh tool-pins file",
         )
 
         # source digest recorded and stable

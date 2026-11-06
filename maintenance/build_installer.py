@@ -8,7 +8,7 @@ Phases
 3. compile all three tools from checked-in source
 4. extract libusb + combined LICENSE, hash fresh tool outputs, generate pins
 5. build Qualcomm driver ZIP
-6. package G4 and G5 installers via package_edl
+6. package the G4, G5 and TB710FU EDL toolchains via package_edl
 7. emit MSBuild props + build record (atomic last-success pointers)
 
 After prepare(), the CLI optionally runs `dotnet publish` of the WPF app against
@@ -42,6 +42,7 @@ _PROPERTY_NAMES = (
     "BundledPlatformToolsArchive",
     "BundledEdlArchive",
     "BundledEdlG5Archive",
+    "BundledEdlTb710fuArchive",
     "BundledQualcommDriverArchive",
     "BundledEdlRawPacker",
     "BundledEdlRawUnpacker",
@@ -460,7 +461,7 @@ def prepare(repo_root, work_dir, manifest_path=None):
     driver_zip = run_dir / "qualcomm-driver.zip"
     _build_driver_zip(repo_root, driver_zip)
 
-    # --- Phase 6: package G4 / G5 ----------------------------------------
+    # --- Phase 6: package G4 / G5 / TB710FU -------------------------------
     python_zip = fetched["python"]
     avb = repo_root / "maintenance" / "avb_stock.py"
     avb_cli = repo_root / "maintenance" / "avb_stock_cli.py"
@@ -477,10 +478,13 @@ def prepare(repo_root, work_dir, manifest_path=None):
 
     firehose_melf = repo_root / "vendor" / "qualcomm" / "g4" / "firehose.melf"
     g5_root = repo_root / "vendor" / "qualcomm" / "g5"
+    tb710fu_firehose = repo_root / "vendor" / "qualcomm" / "tb710fu" / "firehose.melf"
     if not firehose_melf.is_file():
         raise SystemExit(f"package error: missing G4 firehose {firehose_melf}")
     if not g5_root.is_dir():
         raise SystemExit(f"package error: missing G5 loader root {g5_root}")
+    if not tb710fu_firehose.is_file():
+        raise SystemExit(f"package error: missing TB710FU firehose {tb710fu_firehose}")
 
     packages_dir = run_dir / "packages"
     packages_dir.mkdir()
@@ -496,7 +500,11 @@ def prepare(repo_root, work_dir, manifest_path=None):
             "avbCli": str(avb_cli.resolve()),
             "gpt": str(gpt.resolve()),
             "gptCli": str(gpt_cli.resolve()),
-            "firehose": str(firehose_melf.resolve()) if profile == "tb322fc" else None,
+            "firehose": (
+                str(firehose_melf.resolve()) if profile == "tb322fc"
+                else str(tb710fu_firehose.resolve()) if profile == "tb710fu"
+                else None
+            ),
             "loader_root": str(g5_root.resolve()) if profile == "tb323fu" else None,
             "output": str(Path(output).resolve()),
             "build_pins_json": str(tool_pins_json_path.resolve()),
@@ -508,12 +516,15 @@ def prepare(repo_root, work_dir, manifest_path=None):
     g5_out = packages_dir / "freedom-tb323fu.zip"
     g4_report = _package("tb322fc", g4_out)
     g5_report = _package("tb323fu", g5_out)
+    tb710fu_out = packages_dir / "freedom-tb710fu.zip"
+    tb710fu_report = _package("tb710fu", tb710fu_out)
 
     # --- Phase 7: props + record ----------------------------------------
     inputs = {
         "BundledPlatformToolsArchive": str(Path(fetched["platformTools"]).resolve()),
         "BundledEdlArchive": str(g4_out.resolve()),
         "BundledEdlG5Archive": str(g5_out.resolve()),
+        "BundledEdlTb710fuArchive": str(tb710fu_out.resolve()),
         "BundledQualcommDriverArchive": str(driver_zip.resolve()),
         "BundledEdlRawPacker": str(packer_exe.resolve()),
         "BundledEdlRawUnpacker": str(unpacker_exe.resolve()),
@@ -561,6 +572,7 @@ def prepare(repo_root, work_dir, manifest_path=None):
         "packages": {
             "tb322fc": str(g4_out.resolve()),
             "tb323fu": str(g5_out.resolve()),
+            "tb710fu": str(tb710fu_out.resolve()),
         },
         "sources": sources_meta,
         "sourceFiles": source_digest,

@@ -40,6 +40,9 @@ internal sealed class GlobalEdlTestDevice
 
     private static readonly string[] Lun5 = { "modemst1", "modemst2", "fsg", "fsc", "modem" };
 
+    /// <summary>Labels of the default layout that the optional TB710FU layout does not carry.</summary>
+    private static readonly string[] Tb710fuAbsent = { "lenovocust", "lenovoraw", "efisp" };
+
     private readonly Dictionary<int, byte[]> _disks = new();
     private readonly Dictionary<int, IReadOnlyList<GptPartitionSpec>> _partitions = new();
     private readonly Dictionary<string, GptPartitionSpec> _specByLabel = new(StringComparer.Ordinal);
@@ -49,6 +52,7 @@ internal sealed class GlobalEdlTestDevice
     private readonly int _superSectors;
     private readonly bool _userdataLinuxType;
     private readonly bool _shortMisc;
+    private readonly bool _tb710fu;
 
     internal GlobalEdlTestDevice(
         bool gen5 = false,
@@ -56,13 +60,20 @@ internal sealed class GlobalEdlTestDevice
         bool linuxTypeOnly = false,
         bool multiChunkSuper = false,
         bool userdataLinuxType = false,
-        bool shortMisc = false)
+        bool shortMisc = false,
+        bool tb710fu = false)
     {
+        if (gen5 && tb710fu)
+        {
+            throw new ArgumentException("fixture: choose at most one of gen5 and tb710fu");
+        }
+
         _linuxName = linuxName;
         _linuxTypeOnly = linuxTypeOnly;
         _superSectors = multiChunkSuper ? 16385 : 16;
         _userdataLinuxType = userdataLinuxType;
         _shortMisc = shortMisc;
+        _tb710fu = tb710fu;
 
         for (var lun = 0; lun < 6; lun++)
         {
@@ -177,6 +188,13 @@ internal sealed class GlobalEdlTestDevice
     private void BuildLun(int lun, bool gen5)
     {
         List<string> labels = LabelsFor(lun, gen5).ToList();
+
+        if (_tb710fu)
+        {
+            // TB710FU layout: the measured LUN0 GPT has no lenovocust / lenovoraw and the device has no efisp.
+            labels.RemoveAll(label => Tb710fuAbsent.Contains(label, StringComparer.Ordinal));
+        }
+
         bool hasUserdata = labels.Remove("userdata");
 
         if (lun == 0)

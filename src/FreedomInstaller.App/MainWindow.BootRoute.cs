@@ -138,7 +138,7 @@ public partial class MainWindow
         };
     }
 
-    /// <summary>路线状态的标题文案。七种状态都有独立文案，未知取值退回「待读取设备」。</summary>
+    /// <summary>路线状态的标题文案。八种状态都有独立文案，未知取值退回「待读取设备」。</summary>
     private static string BootRouteStatusKey(BootRouteStatus status) => status switch
     {
         BootRouteStatus.UnsupportedModel => "Dynamic.BootRoute.Status.UnsupportedModel",
@@ -147,6 +147,7 @@ public partial class MainWindow
         BootRouteStatus.UnlockedRoute => "Dynamic.BootRoute.Status.UnlockedRoute",
         BootRouteStatus.LockedEdlCandidate => "Dynamic.BootRoute.Status.LockedEdlCandidate",
         BootRouteStatus.LockedRouteUnsupported => "Dynamic.BootRoute.Status.LockedRouteUnsupported",
+        BootRouteStatus.ModelRoutePending => "Dynamic.BootRoute.Status.ModelRoutePending",
         _ => "Dynamic.BootRoute.Status.PendingDevice",
     };
 
@@ -159,6 +160,7 @@ public partial class MainWindow
         BootRouteStatus.UnlockedRoute => "Dynamic.BootRoute.Next.UnlockedRoute",
         BootRouteStatus.LockedEdlCandidate => "Dynamic.BootRoute.Next.LockedEdlCandidate",
         BootRouteStatus.LockedRouteUnsupported => "Dynamic.BootRoute.Next.LockedRouteUnsupported",
+        BootRouteStatus.ModelRoutePending => "Dynamic.BootRoute.Next.ModelRoutePending",
         _ => "Dynamic.BootRoute.Next.PendingDevice",
     };
 }

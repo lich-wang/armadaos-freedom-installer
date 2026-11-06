@@ -217,6 +217,10 @@ internal sealed class DeviceCheckRunner : ICommandRunner
 
     public string ReturnSlotSuffix { get; set; } = "_a";
 
+    public string FlashLocked { get; set; } = "1";
+
+    public string VbmetaDeviceState { get; set; } = "locked";
+
     public string ReturnSerial { get; set; }
 
     public string ReturnModel { get; set; }
@@ -365,6 +369,10 @@ internal sealed class DeviceCheckRunner : ICommandRunner
                             return Ok(BootCompleted());
                         case "ro.boot.slot_suffix":
                             return Ok(ReturnSlotSuffix);
+                        case "ro.boot.flash.locked":
+                            return Ok(FlashLocked);
+                        case "ro.boot.vbmeta.device_state":
+                            return Ok(VbmetaDeviceState);
                     }
                 }
 
@@ -577,6 +585,81 @@ public sealed class InternalInstallDeviceCheckTests
         Assert.Equal(1, runner.AdbBootloaderReboots);
         Assert.Equal(1, runner.FastbootReboots);
         Assert.Equal(0, runner.ForbiddenModeCommands);
+    }
+
+    // Fork: the TB710FU ABL crashes into 900E when asked to enter fastboot, so its Step 1 stays in Android
+    // and takes the lock state and slot from the boot properties.
+    [Theory]
+    [InlineData("1", "locked", "_a", BootloaderState.Locked, "a")]
+    [InlineData("0", "unlocked", "_b", BootloaderState.Unlocked, "b")]
+    public async Task Check_Tb710fuUsesAndroidBootPropertiesWithoutFastboot(
+        string flashLocked, string deviceState, string suffix, BootloaderState expectedLock, string expectedSlot)
+    {
+        var runner = new DeviceCheckRunner(
+            Serial,
+            new DeviceCheckClock(),
+            model: "TB710FU",
+            displayId: "TB710FU.synthetic.firmware")
+        {
+            FlashLocked = flashLocked,
+            VbmetaDeviceState = deviceState,
+            ReturnSlotSuffix = suffix,
+        };
+        var check = CreateCheck(runner);
+
+        var result = await check.CheckAsync(Serial);
+
+        Assert.True(result.Succeeded, result.Error);
+        Assert.Equal(expectedLock, result.FastbootLockState);
+        Assert.Equal(expectedSlot, result.CurrentSlot);
+        Assert.Equal(Serial, result.FastbootSerial);
+        Assert.Null(result.FastbootProduct);
+        Assert.Equal(AndroidReturnState.Verified, result.AndroidReturn);
+        Assert.Equal(0, runner.AdbBootloaderReboots);
+        Assert.Equal(0, runner.FastbootReboots);
+        Assert.Equal(0, runner.ForbiddenModeCommands);
+    }
+
+    [Theory]
+    [InlineData("1", "unlocked", "_a")]
+    [InlineData("0", "locked", "_a")]
+    [InlineData("", "locked", "_a")]
+    [InlineData("1", "locked", "")]
+    [InlineData("1", "locked", "_c")]
+    public async Task Check_Tb710fuRefusesInconsistentBootProperties(string flashLocked, string deviceState, string suffix)
+    {
+        var runner = new DeviceCheckRunner(
+            Serial,
+            new DeviceCheckClock(),
+            model: "TB710FU",
+            displayId: "TB710FU.synthetic.firmware")
+        {
+            FlashLocked = flashLocked,
+            VbmetaDeviceState = deviceState,
+            ReturnSlotSuffix = suffix,
+        };
+        var check = CreateCheck(runner);
+
+        var result = await check.CheckAsync(Serial);
+
+        Assert.False(result.Succeeded);
+        Assert.Equal(InternalDeviceCheckStage.CheckingBootloader, result.FailedStage);
+        Assert.Equal(0, runner.AdbBootloaderReboots);
+    }
+
+    [Fact]
+    public async Task Check_G4RejectsTheTb710fuProduct()
+    {
+        var runner = new DeviceCheckRunner(Serial, new DeviceCheckClock())
+        {
+            FastbootProductValue = "topaz_prc_wifi",
+        };
+        var check = CreateCheck(runner);
+
+        var result = await check.CheckAsync(Serial);
+
+        Assert.False(result.Succeeded);
+        Assert.Equal(AndroidReturnState.Verified, result.AndroidReturn);
     }
 
     [Fact]

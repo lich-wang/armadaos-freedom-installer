@@ -635,6 +635,14 @@ public partial class MainWindow
                     _globalRestoreSet = set;
 
                     GlobalEdlIdentity identity = set.Identity;
+
+                    // 只开放全局备份（只读）的型号：恢复写入路线尚未开放，在连接或准备之前停下。
+                    if (DeviceModelRoutes.IsWriteRoutePending(identity.Model))
+                    {
+                        throw new InvalidOperationException(
+                            T("Dynamic.Global.Error.RestoreRoutePending", identity.Model));
+                    }
+
                     EdlDeviceProfile? profile = _globalEdlClient is not null
                         ? _globalProfile
                         : EdlDeviceProfiles.FindByModel(identity.Model);

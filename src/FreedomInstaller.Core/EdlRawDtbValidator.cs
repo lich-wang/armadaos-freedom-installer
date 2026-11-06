@@ -86,6 +86,19 @@ public static class EdlRawDtbValidator
     private const string G4SocToken = "qcom,sm8750";
     private const string G5DeviceToken = "lenovo,baldur";
     private const string G5SocToken = "qcom,kaanapali";
+    private const string ModelTb710fu = "TB710FU";
+    private const string Tb710fuDeviceToken = "lenovo,tb710fu";
+    private const string Tb710fuSocToken = "qcom,sm8650";
+
+    // The foreign tokens of each model. G4 and G5 keep exactly their previous pair (the other generation's
+    // device and SoC token); TB710FU rejects every Y700 device token and every Y700 SoC token, including the
+    // model-name and sm8850 aliases. A G4/G5 blob is deliberately not tightened against lenovo,tb710fu.
+    private static readonly string[] G4ForeignTokens = { G5DeviceToken, G5SocToken };
+    private static readonly string[] G5ForeignTokens = { G4DeviceToken, G4SocToken };
+    private static readonly string[] Tb710fuForeignTokens =
+    {
+        G4DeviceToken, "lenovo,tb322fc", G5DeviceToken, "lenovo,tb323fu", G4SocToken, "qcom,sm8850", G5SocToken,
+    };
 
     private const string NormalStage = "os";
     private const string DiagnosticStage = "maintenance";
@@ -258,19 +271,28 @@ public static class EdlRawDtbValidator
             throw new ArgumentException("Expected model is required.", nameof(expectedModel));
         }
 
-        bool isG4 = string.Equals(expectedModel, ModelG4, StringComparison.Ordinal);
-        bool isG5 = string.Equals(expectedModel, ModelG5, StringComparison.Ordinal);
-        if (!isG4 && !isG5)
+        string requiredDevice;
+        string requiredSoc;
+        string[] foreignTokens;
+        if (string.Equals(expectedModel, ModelG4, StringComparison.Ordinal))
         {
-            throw new ArgumentException("Expected model must be exactly TB322FC or TB323FU.", nameof(expectedModel));
+            (requiredDevice, requiredSoc, foreignTokens) = (G4DeviceToken, G4SocToken, G4ForeignTokens);
+        }
+        else if (string.Equals(expectedModel, ModelG5, StringComparison.Ordinal))
+        {
+            (requiredDevice, requiredSoc, foreignTokens) = (G5DeviceToken, G5SocToken, G5ForeignTokens);
+        }
+        else if (string.Equals(expectedModel, ModelTb710fu, StringComparison.Ordinal))
+        {
+            (requiredDevice, requiredSoc, foreignTokens) = (Tb710fuDeviceToken, Tb710fuSocToken, Tb710fuForeignTokens);
+        }
+        else
+        {
+            throw new ArgumentException(
+                "Expected model must be exactly TB322FC, TB323FU or TB710FU.", nameof(expectedModel));
         }
 
         ValidateExpectedBootArgs(expectedBootArgs);
-
-        string requiredDevice = isG4 ? G4DeviceToken : G5DeviceToken;
-        string requiredSoc = isG4 ? G4SocToken : G5SocToken;
-        string foreignDevice = isG4 ? G5DeviceToken : G4DeviceToken;
-        string foreignSoc = isG4 ? G5SocToken : G4SocToken;
 
         Facts facts;
         try
@@ -300,7 +322,7 @@ public static class EdlRawDtbValidator
             throw Malformed("missing /chosen node.");
         }
 
-        string[] compatible = ReadCompatibleList(dtb, facts.Compatible, requiredDevice, requiredSoc, foreignDevice, foreignSoc);
+        string[] compatible = ReadCompatibleList(dtb, facts.Compatible, requiredDevice, requiredSoc, foreignTokens);
         string bootArgs = ReadBootArgs(dtb, facts.BootArgs, expectedBootArgs);
         string bootStage = ReadSingleNulString(dtb, facts.BootStage, BootStageProperty);
         string expectedStage = kind == EdlRawDtbKind.Normal ? NormalStage : DiagnosticStage;
@@ -663,8 +685,7 @@ public static class EdlRawDtbValidator
         PropertySlice slice,
         string requiredDevice,
         string requiredSoc,
-        string foreignDevice,
-        string foreignSoc)
+        string[] foreignTokens)
     {
         if (!slice.Present)
         {
@@ -695,8 +716,7 @@ public static class EdlRawDtbValidator
             }
 
             string item = DecodeStrictUtf8(data.Slice(itemStart, i - itemStart), CompatibleProperty);
-            if (string.Equals(item, foreignDevice, StringComparison.Ordinal) ||
-                string.Equals(item, foreignSoc, StringComparison.Ordinal))
+            if (Array.IndexOf(foreignTokens, item) >= 0)
             {
                 throw Malformed(CompatibleProperty + " contains a token from another model family.");
             }

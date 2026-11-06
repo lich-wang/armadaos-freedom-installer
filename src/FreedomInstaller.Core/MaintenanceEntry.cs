@@ -78,7 +78,7 @@ public sealed class MaintenanceEntry
         if (!IsSupportedAndroidModel(identity.Model))
         {
             throw new InvalidOperationException(
-                $"Unsupported model '{identity.Model}': expected {MaintenanceProfiles.Model} or TB323FU.");
+                $"Unsupported model '{identity.Model}': expected {MaintenanceProfiles.Model}, TB323FU or TB710FU.");
         }
 
         string serial = RequireNonEmpty(identity.Serial, "Android serial");
@@ -416,9 +416,12 @@ public sealed class MaintenanceEntry
         return value.Trim();
     }
 
+    // Only gates the read-only SoC serial read; TB710FU joins for its read-only checks, while temporary boot
+    // stays exactly TB322FC and every TB710FU write route is held back by DeviceModelRoutes.
     private static bool IsSupportedAndroidModel(string? model)
         => string.Equals(model, MaintenanceProfiles.Model, StringComparison.OrdinalIgnoreCase)
-            || string.Equals(model, "TB323FU", StringComparison.OrdinalIgnoreCase);
+            || string.Equals(model, "TB323FU", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(model, DeviceModelRoutes.Tb710fuModel, StringComparison.OrdinalIgnoreCase);
 
     private static bool IsUnlockedValue(string value)
         => string.Equals(value, "yes", StringComparison.OrdinalIgnoreCase)

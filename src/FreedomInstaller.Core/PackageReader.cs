@@ -49,6 +49,7 @@ public static partial class PackageReader
         {
             ["TB322FC"] = ("SM8750", "elden"),
             ["TB323FU"] = ("SM8850", "baldur"),
+            ["TB710FU"] = ("SM8650", "tb710fu"),
         };
 
     /// <summary>
@@ -56,7 +57,7 @@ public static partial class PackageReader
     /// contract v1.
     /// <para>
     /// Required metadata: <c>schemaVersion</c> = 1, non-empty <c>packageId</c>, non-empty <c>version</c>
-    /// (never "latest"), <c>deviceModel</c> (TB322FC or TB323FU, never the legacy <c>model</c> field),
+    /// (never "latest"), <c>deviceModel</c> (TB322FC, TB323FU or TB710FU, never the legacy <c>model</c> field),
     /// a boolean <c>testOnly</c>, <c>compatible</c> (soc + board codename matching the device model),
     /// the <c>artifacts</c> list (role / file / bytes / sha256) covering ostree-seed, kernel, dtb and
     /// runtime, <c>deployment</c> (ostree-offline-seed kind, lowercase 64-hex commit, sha256-prefixed
@@ -433,13 +434,13 @@ public static partial class PackageReader
 
         if (!TryCanonicalizeDeviceModel(declared, out canonicalModel))
         {
-            reasons.Add($"安装包声明的 deviceModel {declared} 不在支持列表（TB322FC / TB323FU）内，拒绝使用。");
+            reasons.Add($"安装包声明的 deviceModel {declared} 不在支持列表（TB322FC / TB323FU / TB710FU）内，拒绝使用。");
             return false;
         }
 
         if (!TryCanonicalizeDeviceModel(expectedModel.Trim(), out var expectedCanonical))
         {
-            reasons.Add($"期望型号 {expectedModel.Trim()} 不在支持列表（TB322FC / TB323FU）内，拒绝使用。");
+            reasons.Add($"期望型号 {expectedModel.Trim()} 不在支持列表（TB322FC / TB323FU / TB710FU）内，拒绝使用。");
             return false;
         }
 

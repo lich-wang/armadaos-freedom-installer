@@ -101,7 +101,7 @@ class PackageTests(unittest.TestCase):
         pins = _patched_pins({**common, **materials}, profile)
         new_profile = _replace_profile_pins(profile, pins)
         extra = {}
-        if profile is edl.G4_PROFILE:
+        if profile in edl.SINGLE_FIREHOSE_PROFILES:
             extra["firehose"] = materials["firehose"]
         else:
             loader = os.path.join(self.root, "loader")
@@ -186,6 +186,9 @@ class PackageTests(unittest.TestCase):
     def test_roundtrip_g5(self) -> None:
         self._roundtrip("tb323fu", edl.G5_PROFILE)
 
+    def test_roundtrip_tb710fu(self) -> None:
+        self._roundtrip("tb710fu", edl.TB710FU_PROFILE)
+
     def test_g4_rejects_wrong_firehose_material(self) -> None:
         common = _common_fixtures(self.root)
         materials = _material_fixtures(self.root, edl.G4_PROFILE)
@@ -258,6 +261,13 @@ class PackageTests(unittest.TestCase):
     def test_missing_g4_firehose(self) -> None:
         common = _common_fixtures(self.root)
         args = _args(common, self.out, "tb322fc")
+        with self.assertRaises(edl.PackagingError) as ctx:
+            edl.package(args)
+        self.assertIn("--firehose", str(ctx.exception))
+
+    def test_missing_tb710fu_firehose(self) -> None:
+        common = _common_fixtures(self.root)
+        args = _args(common, self.out, "tb710fu")
         with self.assertRaises(edl.PackagingError) as ctx:
             edl.package(args)
         self.assertIn("--firehose", str(ctx.exception))

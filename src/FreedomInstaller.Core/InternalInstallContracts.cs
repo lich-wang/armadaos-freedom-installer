@@ -122,6 +122,14 @@ public enum InternalInstallBootTrustMode
     /// validity alone does not establish payload acceptance.
     /// </summary>
     GblPreserveOem = 1,
+
+    /// <summary>
+    /// Project boot candidates are signed with the fixed AOSP key, which the original root vbmeta already
+    /// chains boot to; recovery, vbmeta_system and vbmeta are left exactly as they are and no AVB metadata is
+    /// written. Used where the original root and its boot chain are the AOSP key but another chain is not
+    /// rekeyable (TB710FU: vbmeta_system is RSA2048).
+    /// </summary>
+    AospPreserved = 2,
 }
 
 /// <summary>

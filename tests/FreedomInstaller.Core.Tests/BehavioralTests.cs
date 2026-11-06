@@ -80,6 +80,24 @@ public sealed class BehavioralTests
     // ---------------------------------------------------------------- model identity
 
     [Fact]
+    public void IdentifyModel_FallsBackToTheBootImageModelOnlyWithoutAPrimaryClaim()
+    {
+        // HyperOS port on a TB710FU: the product properties are a Xiaomi model.
+        Assert.Equal(
+            "TB710FU",
+            DeviceProbe.IdentifyModel(
+                "[ro.product.model]: [25091RP04C]\n[ro.product.vendor.model]: [Xiaomi for arm64]\n"
+                + "[ro.product.name]: [piano]\n[ro.product.bootimage.model]: [TB710FU]"));
+
+        // A primary claim always wins; the boot image property can neither override nor contradict it.
+        Assert.Equal(
+            "TB322FC",
+            DeviceProbe.IdentifyModel("[ro.product.model]: [TB322FC]\n[ro.product.bootimage.model]: [TB323FU]"));
+
+        Assert.Null(DeviceProbe.IdentifyModel("[ro.product.bootimage.model]: [SomethingElse]"));
+    }
+
+    [Fact]
     public void IdentifyModel_CanonicalizesExactTicketModels()
     {
         Assert.Equal(
@@ -112,6 +130,42 @@ public sealed class BehavioralTests
     {
         Assert.Null(DeviceProbe.IdentifyModel(
             "[ro.product.model]: [TB322FC]\n[ro.product.vendor.model]: [TB323FU]"));
+    }
+
+    [Fact]
+    public void IdentifyModel_CanonicalizesTb710fu()
+    {
+        Assert.Equal(
+            "TB710FU",
+            DeviceProbe.IdentifyModel("[ro.product.model]: [TB710FU]\n[ro.product.vendor.model]: [TB710FU]"));
+        Assert.Equal("TB710FU", DeviceProbe.IdentifyModel("[ro.product.model]: [Lenovo TB710FU]"));
+        Assert.Equal("TB710FU", DeviceProbe.IdentifyModel("[ro.product.name]: [TB710FU_PRC]"));
+
+        // The fastboot product codename is not a model claim and does not contradict the model.
+        Assert.Equal(
+            "TB710FU",
+            DeviceProbe.IdentifyModel("[ro.product.name]: [topaz_prc_wifi]\n[ro.product.model]: [TB710FU]"));
+    }
+
+    [Fact]
+    public void IdentifyModel_RejectsTb710fuLookalikesAndContradictions()
+    {
+        Assert.Null(DeviceProbe.IdentifyModel("[ro.product.model]: [TB710F]"));
+        Assert.Null(DeviceProbe.IdentifyModel("[ro.product.model]: [TB710FUX]"));
+        Assert.Null(DeviceProbe.IdentifyModel(
+            "[ro.product.model]: [TB710FU]\n[ro.product.vendor.model]: [TB322FC]"));
+        Assert.Null(DeviceProbe.IdentifyModel(
+            "[ro.product.model]: [TB323FU]\n[ro.product.vendor.model]: [TB710FU]"));
+    }
+
+    [Fact]
+    public void IdentifyModel_HyperOsPortPropertiesNameNoSupportedModel()
+    {
+        // A third-party port on TB710FU reports another vendor's model; it is deliberately not identified.
+        Assert.Null(DeviceProbe.IdentifyModel(
+            "[ro.product.model]: [25091RP04C]\n" +
+            "[ro.product.vendor.model]: [25091RP04C]\n" +
+            "[ro.product.name]: [piano]\n"));
     }
 
     // -------------------------------------------------------------- partition planner
@@ -532,6 +586,7 @@ internal static class PackageFixture
         File.WriteAllBytes(Path.Combine(directory, RuntimeFileName), RuntimePayload);
 
         var isTB323FU = string.Equals(deviceModel, "TB323FU", StringComparison.OrdinalIgnoreCase);
+        var isTB710FU = string.Equals(deviceModel, "TB710FU", StringComparison.OrdinalIgnoreCase);
 
         var metadata = new Dictionary<string, object?>
         {
@@ -542,8 +597,8 @@ internal static class PackageFixture
             ["testOnly"] = true,
             ["compatible"] = new Dictionary<string, object?>
             {
-                ["soc"] = isTB323FU ? "SM8850" : "SM8750",
-                ["device"] = isTB323FU ? "baldur" : "elden",
+                ["soc"] = isTB323FU ? "SM8850" : isTB710FU ? "SM8650" : "SM8750",
+                ["device"] = isTB323FU ? "baldur" : isTB710FU ? "tb710fu" : "elden",
             },
             ["artifacts"] = new object[]
             {

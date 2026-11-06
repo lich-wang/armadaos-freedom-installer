@@ -619,6 +619,13 @@ public partial class MainWindow
     {
         ArgumentNullException.ThrowIfNull(identity);
 
+        // 该选择只服务于恢复：恢复写入路线未开放的型号（TB710FU）不会被选中。
+        if (DeviceModelRoutes.IsWriteRoutePending(identity.Model))
+        {
+            throw new InvalidOperationException(
+                T("Dynamic.Global.Error.RestoreRoutePending", identity.Model));
+        }
+
         EdlDeviceProfile? profile = EdlDeviceProfiles.FindById(identity.ProfileId);
         if (profile is null
             || !profile.IsComplete

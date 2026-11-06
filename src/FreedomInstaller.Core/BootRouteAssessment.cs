@@ -170,13 +170,20 @@ public enum BootRouteStatus
 
     /// <summary>Locked TB323FU: no supported no-unlock route exists for this generation.</summary>
     LockedRouteUnsupported = 6,
+
+    /// <summary>
+    /// TB710FU: the model is identified, but its write routes are not open yet (see
+    /// <see cref="DeviceModelRoutes"/>), whatever the lock state.
+    /// </summary>
+    ModelRoutePending = 7,
 }
 
 /// <summary>
 /// Decides which boot route a device can take, from already collected evidence only. This type never touches
 /// a device, never runs a command and never turns a report into a write permission.
 /// <para>
-/// The decision is deliberately closed: only the exact models TB322FC / TB323FU are considered, only
+/// The decision is deliberately closed: only the exact models TB322FC / TB323FU are routed (TB710FU is
+/// identified but always <see cref="BootRouteStatus.ModelRoutePending"/>), only
 /// <see cref="BootloaderState.Unlocked"/> yields <see cref="BootRouteStatus.UnlockedRoute"/>, an undefined
 /// enum value is never interpreted as anything but unconfirmed, and an Android report is never used as a
 /// substitute for a confirmed lock state. There is no firmware version cutoff and no model-based trust.
@@ -188,7 +195,8 @@ public static class BootRouteAssessment
     /// Evaluates the route of <paramref name="identity"/>.
     /// <list type="bullet">
     /// <item>no identity (or no serial) yields <see cref="BootRouteStatus.PendingDevice"/>;</item>
-    /// <item>any model other than TB322FC / TB323FU yields <see cref="BootRouteStatus.UnsupportedModel"/>;</item>
+    /// <item>any model other than TB322FC / TB323FU / TB710FU yields <see cref="BootRouteStatus.UnsupportedModel"/>;</item>
+    /// <item>TB710FU yields <see cref="BootRouteStatus.ModelRoutePending"/> before any lock state is consulted;</item>
     /// <item>a confirmed <see cref="BootloaderState.Unlocked"/> yields
     /// <see cref="BootRouteStatus.UnlockedRoute"/>;</item>
     /// <item>a confirmed <see cref="BootloaderState.Locked"/> yields
@@ -214,6 +222,12 @@ public static class BootRouteAssessment
         if (model is null)
         {
             return BootRouteStatus.UnsupportedModel;
+        }
+
+        if (DeviceModelRoutes.IsWriteRoutePending(model))
+        {
+            // Identified, but no write route exists yet: a lock state can never turn it into a route.
+            return BootRouteStatus.ModelRoutePending;
         }
 
         switch (identity.BootloaderState)

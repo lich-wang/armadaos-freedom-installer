@@ -343,6 +343,9 @@ public static class GlobalEdlRestore
         // The saved identity and the identity the client is actually bound to must name the same tablet.
         GlobalEdlIdentity saved = backup.Manifest.Identity;
         GlobalEdlIdentity actual = GlobalEdlBackup.IdentityFor(client);
+
+        // A model whose restore write route is not open is refused before any directory or probe exists.
+        DeviceModelRoutes.RequireWriteRoute(actual.Model);
         RequireIdentityMatch(saved, actual);
 
         token.ThrowIfCancellationRequested();
@@ -491,6 +494,9 @@ public static class GlobalEdlRestore
         }
 
         plan.ThrowIfDisposed();
+
+        // Same gate as PrepareAsync, again before the run starts: nothing is probed or written.
+        DeviceModelRoutes.RequireWriteRoute(plan.Identity.Model);
 
         if (!string.Equals(confirmationId, plan.ConfirmationId, StringComparison.Ordinal))
         {

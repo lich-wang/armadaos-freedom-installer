@@ -717,7 +717,7 @@ public sealed class DeviceTransport
         {
             // Missing model, unsupported model and two contradictory model properties all land here.
             throw new InvalidOperationException(
-                $"无法从设备 {serial} 的 getprop 输出确认受支持的型号（只接受 TB322FC / TB323FU），拒绝继续。");
+                $"无法从设备 {serial} 的 getprop 输出确认受支持的型号（只接受 TB322FC / TB323FU / TB710FU），拒绝继续。");
         }
 
         // getprop runs inside Android, so it says nothing about fastboot accepting writes: always Unknown.
@@ -771,7 +771,7 @@ public sealed class DeviceTransport
         if (!DeviceProbe.IsSupportedModel(identity.Model))
         {
             throw new ArgumentException(
-                $"已确认的设备身份型号「{identity.Model}」不在支持列表（TB322FC / TB323FU）内，拒绝查询引导状态。",
+                $"已确认的设备身份型号「{identity.Model}」不在支持列表（TB322FC / TB323FU / TB710FU）内，拒绝查询引导状态。",
                 nameof(identity));
         }
 

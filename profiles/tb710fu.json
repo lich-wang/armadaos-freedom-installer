@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "model": "TB710FU",
+  "codename": "tb710fu",
+  "platform": "SM8650",
+  "maintenanceValidated": false,
+  "androidMinimumGiB": null,
+  "compatibleCandidates": [
+    {
+      "model": "TB710FU",
+      "codename": "tb710fu",
+      "platform": "SM8650"
+    }
+  ],
+  "notes": "Only the model identifier and the compatible candidate are recorded. Identification, the 9008 tool profile and read-only validation are registered; install, maintenance, uninstall and restore write routes are not open. No firmware is declared ready, no accepted partition capacity is claimed, and maintenance state is unverified."
+}

@@ -100,7 +100,7 @@ class MacPrepareTests(unittest.TestCase):
 
     def test_packages_every_profile_for_macos_with_fresh_pins(self):
         record, calls = self._prepare()
-        self.assertEqual([ns.profile for ns in calls], ["tb322fc", "tb323fu"])
+        self.assertEqual([ns.profile for ns in calls], ["tb322fc", "tb323fu", "tb710fu"])
         for ns in calls:
             self.assertEqual(ns.platform, "macos-arm64")
             self.assertIsNone(ns.python)

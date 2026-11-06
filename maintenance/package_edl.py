@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Package the pinned G4 or G5 EDL toolchain."""
+"""Package the pinned G4, G5 or TB710FU EDL toolchain."""
 
 from __future__ import annotations
 
@@ -110,12 +110,27 @@ G5_PROFILE = {
     ),
 }
 
+TB710FU_PROFILE = {
+    "profileId": "tb710fu-9008-495",
+    "model": "TB710FU",
+    "androidBuild": "TB710FU/ZUXOS_1.5.04.495_WITHOUT_UBL/EDL/xbl_s_devprg_ns.melf",
+    "hardwareId": "003050E100400000",
+    "materials": (
+        ("firehose", "tools/tb710fu/firehose.melf", 1573224,
+         "ad4689b1c52458250d46829ee46a89ec974e69f8e82eee8d4950427919e0b9eb"),
+    ),
+}
+
 PROFILES = {
     "g4": G4_PROFILE,
     "tb322fc": G4_PROFILE,
     "g5": G5_PROFILE,
     "tb323fu": G5_PROFILE,
+    "tb710fu": TB710FU_PROFILE,
 }
+
+# Profiles whose only material is one firehose passed with --firehose.
+SINGLE_FIREHOSE_PROFILES = (G4_PROFILE, TB710FU_PROFILE)
 
 G5_ONLY_ROLES = tuple(role for role, *_ in G5_PROFILE["materials"])
 
@@ -227,7 +242,7 @@ def _profile_key(profile: str) -> str:
     key = profile.lower()
     if key not in PROFILES:
         raise PackagingError(
-            f"unknown profile: {profile} (expected one of tb322fc, tb323fu)"
+            f"unknown profile: {profile} (expected one of tb322fc, tb323fu, tb710fu)"
         )
     return key
 
@@ -257,7 +272,7 @@ def _effective_pins(args: argparse.Namespace, platform: dict) -> dict[str, tuple
     """Merge build-time client pin (if supplied) over the platform's frozen pins.
 
     Only the `client` entry may be overridden by --build-pins-json; every other
-    pin (python and all G4/G5 material pins via the profile) is preserved.
+    pin (python and all G4/G5/TB710FU material pins via the profile) is preserved.
     Without the flag the frozen client pin of the platform is used unchanged; a
     platform without one (macos-arm64) requires the flag.
     """
@@ -313,10 +328,10 @@ def package(args: argparse.Namespace) -> dict:
     # Material roles derived from the selected profile.
     material_roles = tuple(profile["materials"])
     material_sources: dict[str, str] = {}
-    if profile is G4_PROFILE:
+    if any(profile is single for single in SINGLE_FIREHOSE_PROFILES):
         firehose = getattr(args, "firehose", None)
         if not firehose:
-            raise PackagingError("g4 profile requires --firehose")
+            raise PackagingError(f"{profile['model']} profile requires --firehose")
         material_sources["firehose"] = _resolve_input("firehose", firehose)
     else:
         material_sources = _resolve_g5_materials(profile, args)
@@ -427,14 +442,14 @@ def package(args: argparse.Namespace) -> dict:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         prog="package_edl.py",
-        description="Build a pinned G4 or G5 EDL toolchain ZIP from explicit files.",
+        description="Build a pinned G4, G5 or TB710FU EDL toolchain ZIP from explicit files.",
     )
     parser.add_argument(
         "--profile",
         dest="profile",
         default="tb322fc",
         metavar="NAME",
-        help="trusted profile: tb322fc (G4, default) or tb323fu (G5)",
+        help="trusted profile: tb322fc (G4, default), tb323fu (G5) or tb710fu",
     )
     parser.add_argument(
         "--platform",
@@ -450,7 +465,7 @@ def main(argv: list[str] | None = None) -> int:
         dest="firehose",
         metavar="PATH",
         default=None,
-        help="approved firehose .melf source path (required for G4)",
+        help="approved firehose .melf source path (required for G4 and TB710FU)",
     )
     parser.add_argument(
         "--loader-root",

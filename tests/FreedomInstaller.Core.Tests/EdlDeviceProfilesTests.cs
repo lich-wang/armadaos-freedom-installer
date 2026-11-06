@@ -34,6 +34,19 @@ namespace FreedomInstaller.Core.Tests
         // non-blank device build is accepted; no firmware literal is pinned here.
         private const string G5ActualDisplayId = "TB323FU_SYNTHETIC_ACTUAL_FIRMWARE";
 
+        private const string Tb710fuProfileId = "tb710fu-9008-495";
+        private const string Tb710fuModel = "TB710FU";
+        private const string Tb710fuSoc = "SM8650";
+        private const string Tb710fuFullHardwareId = "003050E100400000";
+        private const string Tb710fuLoaderSourceBuild = "TB710FU/ZUXOS_1.5.04.495_WITHOUT_UBL/EDL/xbl_s_devprg_ns.melf";
+        private const string Tb710fuArchiveName = "FreedomInstaller.EdlTools.TB710FU.zip";
+        private const string Tb710fuFirehosePath = "tools/tb710fu/firehose.melf";
+        private const long Tb710fuFirehoseBytes = 1573224L;
+        private const string Tb710fuFirehoseSha = "ad4689b1c52458250d46829ee46a89ec974e69f8e82eee8d4950427919e0b9eb";
+
+        // Synthetic, non-blank actual-firmware value; no TB710FU firmware literal is pinned here.
+        private const string Tb710fuActualDisplayId = "TB710FU_SYNTHETIC_ACTUAL_FIRMWARE";
+
         private const string AndroidSerial = "HA1B2C3D4";
 
         private static readonly (string Role, uint? ImageId, string RelativePath, long Bytes, string Sha256)[]
@@ -173,12 +186,22 @@ namespace FreedomInstaller.Core.Tests
             Assert.Null(profile.Materials[0].ImageId);
         }
 
+        [Fact]
+        public void Only_tb710fu_keeps_the_avb_metadata_on_install()
+        {
+            Assert.Equal(EdlInstallBootTrust.Standard, EdlDeviceProfiles.FindByModel("TB322FC")!.InstallBootTrust);
+            Assert.Equal(EdlInstallBootTrust.Standard, EdlDeviceProfiles.FindByModel("TB323FU")!.InstallBootTrust);
+            Assert.Equal(
+                EdlInstallBootTrust.AospPreservedBoot,
+                EdlDeviceProfiles.FindByModel(Tb710fuModel)!.InstallBootTrust);
+        }
+
         // ---------------------------------------------------------------- lookup and immutability
 
         [Fact]
-        public void Models_are_the_two_supported_models_in_order()
+        public void Models_are_the_three_supported_models_in_order()
         {
-            Assert.Equal(new[] { "TB322FC", "TB323FU" }, EdlDeviceProfiles.Models);
+            Assert.Equal(new[] { "TB322FC", "TB323FU", "TB710FU" }, EdlDeviceProfiles.Models);
         }
 
         [Fact]
@@ -306,6 +329,102 @@ namespace FreedomInstaller.Core.Tests
 
             g5!.RequireComplete();
             Assert.True(g5.IsComplete);
+        }
+
+        // ---------------------------------------------------------------- TB710FU static profile
+
+        [Fact]
+        public void Tb710fu_is_the_complete_static_profile_with_exact_metadata()
+        {
+            var profile = EdlDeviceProfiles.FindById(Tb710fuProfileId);
+
+            Assert.NotNull(profile);
+            Assert.Equal(Tb710fuProfileId, profile!.ProfileId);
+            Assert.Equal(Tb710fuModel, profile.Model);
+            Assert.Equal(Tb710fuSoc, profile.Soc);
+            Assert.Equal(Tb710fuFullHardwareId, profile.FullHardwareId);
+            Assert.Equal(new[] { Tb710fuLoaderSourceBuild }, profile.AllowedDisplayIds);
+            Assert.Equal(EdlLoaderKind.Single, profile.LoaderKind);
+            Assert.Equal(Tb710fuFirehosePath, profile.LoaderEntryPath);
+            Assert.Equal(Tb710fuArchiveName, profile.ArchiveLogicalName);
+            Assert.True(profile.IsComplete);
+            profile.RequireComplete();
+        }
+
+        [Fact]
+        public void Tb710fu_carries_the_single_reviewed_firehose_material()
+        {
+            var material = Assert.Single(EdlDeviceProfiles.FindById(Tb710fuProfileId)!.Materials);
+
+            Assert.Equal("firehose", material.Role);
+            Assert.Equal(13u, material.ImageId.Value);
+            Assert.Equal(Tb710fuFirehosePath, material.RelativePath);
+            Assert.Equal(Tb710fuFirehoseBytes, material.Bytes);
+            Assert.Equal(Tb710fuFirehoseSha, material.Sha256);
+        }
+
+        [Fact]
+        public void Tb710fu_lookup_is_exact_by_id_and_canonical_ignore_case_by_model()
+        {
+            var profile = EdlDeviceProfiles.FindById(Tb710fuProfileId);
+
+            Assert.NotNull(profile);
+            Assert.Same(profile, EdlDeviceProfiles.FindByModel(Tb710fuModel));
+            Assert.Same(profile, EdlDeviceProfiles.FindByModel("tb710fu"));
+
+            Assert.Null(EdlDeviceProfiles.FindById("TB710FU-9008-495"));
+            Assert.Null(EdlDeviceProfiles.FindById(" " + Tb710fuProfileId));
+            Assert.Null(EdlDeviceProfiles.FindByModel("TB710F"));
+            Assert.Null(EdlDeviceProfiles.FindByModel("TB710FUX"));
+            Assert.Null(EdlDeviceProfiles.FindByModel(" " + Tb710fuModel));
+            Assert.Null(EdlDeviceProfiles.FindByModel(Tb710fuModel + " "));
+        }
+
+        [Fact]
+        public void Tb710fu_SupportsIdentity_accepts_the_actual_model_with_nonblank_firmware()
+        {
+            var profile = EdlDeviceProfiles.FindByModel(Tb710fuModel)!;
+
+            Assert.True(profile.SupportsIdentity(Android(Tb710fuModel, Tb710fuActualDisplayId)));
+            Assert.False(profile.SupportsIdentity(Android(Tb710fuModel, " ")));
+            Assert.False(profile.SupportsIdentity(Android(Tb710fuModel, null)));
+        }
+
+        [Theory]
+        [InlineData(G4Model)]
+        [InlineData(G5Model)]
+        [InlineData("25091RP04C")]
+        [InlineData("tb710fu")]
+        [InlineData(Tb710fuModel + " ")]
+        public void Tb710fu_SupportsIdentity_rejects_other_or_noncanonical_models(string model)
+        {
+            var profile = EdlDeviceProfiles.FindByModel(Tb710fuModel)!;
+
+            Assert.False(profile.SupportsIdentity(Android(model, Tb710fuActualDisplayId)));
+        }
+
+        [Fact]
+        public void G4_and_G5_profiles_do_not_accept_a_tb710fu_identity()
+        {
+            Assert.False(EdlDeviceProfiles.Default.SupportsIdentity(Android(Tb710fuModel, Tb710fuActualDisplayId)));
+            Assert.False(EdlDeviceProfiles.FindById(G5ProfileId)!.SupportsIdentity(
+                Android(Tb710fuModel, Tb710fuActualDisplayId)));
+        }
+
+        [Fact]
+        public void Profile_ids_hardware_ids_archives_and_entries_are_distinct_per_model()
+        {
+            var profiles = new List<EdlDeviceProfile>();
+            foreach (var model in EdlDeviceProfiles.Models)
+            {
+                profiles.Add(EdlDeviceProfiles.FindByModel(model)!);
+            }
+
+            Assert.Equal(3, profiles.Count);
+            Assert.Equal(3, new HashSet<string>(profiles.ConvertAll(p => p.ProfileId)).Count);
+            Assert.Equal(3, new HashSet<string>(profiles.ConvertAll(p => p.FullHardwareId!)).Count);
+            Assert.Equal(3, new HashSet<string>(profiles.ConvertAll(p => p.ArchiveLogicalName!)).Count);
+            Assert.Equal(3, new HashSet<string>(profiles.ConvertAll(p => p.LoaderEntryPath)).Count);
         }
 
         private static DeviceIdentity Android(string model, string? displayId) =>

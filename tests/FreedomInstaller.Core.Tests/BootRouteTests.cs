@@ -26,6 +26,7 @@ public sealed class BootRouteTests
     private const string Serial = "R58M12345ABC";
     private const string ModelA = "TB322FC";
     private const string ModelB = "TB323FU";
+    private const string ModelTb710fu = "TB710FU";
 
     private const string DisplayId = "TB322FC_ROW_OPEN_USER_Q00031.0_V_ZUI_17.0.230_ST_240105";
     private const string Fingerprint = "Lenovo/TB322FC/elden:14/UP1A.231005.007/20240105:user/release-keys";
@@ -290,6 +291,59 @@ public sealed class BootRouteTests
         };
 
         Assert.Equal(BootRouteStatus.PendingLockState, BootRouteAssessment.Evaluate(supportedButSilent));
+    }
+
+    [Theory]
+    [InlineData(BootloaderState.Locked)]
+    [InlineData(BootloaderState.Unlocked)]
+    [InlineData(BootloaderState.Unknown)]
+    public void Evaluate_Tb710fuIsIdentifiedButItsRouteIsPendingWhateverTheConfirmedLockState(BootloaderState state)
+    {
+        // TB710FU is a known model (not UnsupportedModel), but no lock state can turn it into a route.
+        Assert.Equal(BootRouteStatus.ModelRoutePending, Evaluate(ModelTb710fu, state));
+        Assert.Equal(BootRouteStatus.ModelRoutePending, Evaluate("tb710fu", state));
+        Assert.Equal(BootRouteStatus.ModelRoutePending, Evaluate("Lenovo TB710FU_PRC", state));
+    }
+
+    [Theory]
+    [InlineData(BootloaderState.Locked)]
+    [InlineData(BootloaderState.Unlocked)]
+    [InlineData(BootloaderState.Unknown)]
+    public void Evaluate_Tb710fuAndroidReportNeverOpensARoute(BootloaderState reported)
+    {
+        Assert.Equal(BootRouteStatus.ModelRoutePending, EvaluateWithReport(ModelTb710fu, reported));
+    }
+
+    [Fact]
+    public void Evaluate_Tb710fuWithoutSerialIsStillPendingDevice()
+    {
+        Assert.Equal(
+            BootRouteStatus.PendingDevice,
+            BootRouteAssessment.Evaluate(new DeviceIdentity(" ", ModelTb710fu, BootloaderState.Unlocked)));
+    }
+
+    [Theory]
+    [InlineData("TB710F")]
+    [InlineData("TB710FUX")]
+    [InlineData("25091RP04C")]
+    public void Evaluate_Tb710fuLookalikesStayUnsupported(string model)
+    {
+        Assert.Equal(BootRouteStatus.UnsupportedModel, Evaluate(model, BootloaderState.Unlocked));
+    }
+
+    [Fact]
+    public void Readiness_Tb710fuStaysClosedEvenWhenEveryOtherInputIsReady()
+    {
+        // The same inputs that open the gate for an unlocked TB322FC keep it closed for TB710FU.
+        var readiness = InstallationReadiness.Evaluate(
+            new DeviceIdentity(Serial, ModelTb710fu, BootloaderState.Unlocked),
+            backupsVerified: true,
+            ValidPackage(),
+            maintenanceValidated: true,
+            ExpectedPlan());
+
+        Assert.False(readiness.IsReady);
+        Assert.Contains(readiness.Reasons, reason => reason.Contains("TB710FU", StringComparison.Ordinal));
     }
 
     [Fact]

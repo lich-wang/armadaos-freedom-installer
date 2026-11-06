@@ -12,7 +12,7 @@ vendor and download checks and its pin generator, and runs on a Mac with the
 4. take the osx-arm64 libusb dylib out of the same pinned LibUsbDotNet package
    (libusbPackage.extractMacos), combine the licenses, hash the fresh tools and
    generate CompiledToolPins;
-5. package the G4 and G5 EDL toolchains with --platform macos-arm64;
+5. package the G4, G5 and TB710FU EDL toolchains with --platform macos-arm64;
 6. emit MSBuild props + build record, then (unless --prepare-only) publish
    FreedomInstaller.Mac for osx-arm64 and wrap it in an .app bundle.
 
@@ -45,6 +45,7 @@ BUNDLE_ID = "io.github.mydanyi.armadaos-freedom-installer"
 _PROPERTY_NAMES = (
     "BundledEdlArchive",
     "BundledEdlG5Archive",
+    "BundledEdlTb710fuArchive",
     "BundledEdlRawPacker",
     "BundledEdlRawUnpacker",
     "BundledAvbSigningKey",
@@ -54,6 +55,7 @@ _PROPERTY_NAMES = (
 _PROFILES = (
     ("tb322fc", "freedom-tb322fc-macos.zip", "BundledEdlArchive"),
     ("tb323fu", "freedom-tb323fu-macos.zip", "BundledEdlG5Archive"),
+    ("tb710fu", "freedom-tb710fu-macos.zip", "BundledEdlTb710fuArchive"),
 )
 
 
@@ -150,6 +152,7 @@ def prepare(repo_root, work_dir, manifest_path=None):
     loaders = {
         "tb322fc": {"firehose": repo_root / "vendor" / "qualcomm" / "g4" / "firehose.melf"},
         "tb323fu": {"loader_root": repo_root / "vendor" / "qualcomm" / "g5"},
+        "tb710fu": {"firehose": repo_root / "vendor" / "qualcomm" / "tb710fu" / "firehose.melf"},
     }
     packages_dir = run_dir / "packages"
     packages_dir.mkdir()

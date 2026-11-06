@@ -209,6 +209,10 @@ public static partial class InternalInstallBackup
 
             builtin.RequireComplete();
 
+            // A historical identity only feeds boot maintenance; it is not produced for a model whose
+            // maintenance write route is not open.
+            DeviceModelRoutes.RequireWriteRoute(builtin.Model);
+
             if (builtin.FullHardwareId is null)
             {
                 throw new InvalidDataException(

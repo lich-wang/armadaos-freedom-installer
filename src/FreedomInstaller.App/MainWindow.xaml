@@ -1146,6 +1146,10 @@
                                                    Style="{StaticResource BodyText}"
                                                    FontSize="12.5"
                                                    Margin="0,4,0,0" />
+                                        <TextBlock Text="{DynamicResource Static.BootCompatTb710Fu}"
+                                                   Style="{StaticResource BodyText}"
+                                                   FontSize="12.5"
+                                                   Margin="0,4,0,0" />
                                         <TextBlock x:Name="BootRouteStatusText"
                                                    Style="{StaticResource BodyInkText}"
                                                    FontSize="12.5"

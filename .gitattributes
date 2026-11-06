@@ -26,4 +26,5 @@
 vendor/qualcomm/driver/** binary
 vendor/qualcomm/g4/** binary
 vendor/qualcomm/g5/** binary
+vendor/qualcomm/tb710fu/** binary
 vendor/aosp/testkey_rsa4096.pem -text

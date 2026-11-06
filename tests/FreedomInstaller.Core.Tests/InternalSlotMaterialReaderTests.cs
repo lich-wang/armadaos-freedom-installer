@@ -1391,6 +1391,24 @@ public sealed class InternalSlotMaterialReaderTests
         }
     }
 
+    [Fact]
+    public void Tb710fu_loader_pair_gets_the_window_budget_only_on_its_exact_identity()
+    {
+        const string ablSha = "6cfa16e65c2dadd0fc557dd356e6c383c693b4c3b7f0a651d92bb9f6e38b74a8";
+        const string xblSha = "388eb4d311993e9b314f058d11f1fb1b486ed2536090b086ea95ffbbc9ec9ce6";
+
+        InternalSlotLoaderBudget budget = InvokeBudget(
+            ablSha, 1048576, xblSha, 245760, 4096, 0, 10633132, 0, 3);
+        Assert.True(budget.KnownLoaderMatch);
+        Assert.Equal("tb710fu-abl495-xbl-config-ramdisk-derived", budget.Profile);
+        Assert.Equal(268435456L - 524288 - 10633216 - 8192 - 2097152, budget.MaxRawBytes);
+
+        // Any other length or page size falls back to the conservative policy.
+        Assert.False(InvokeBudget(ablSha, 1048576, xblSha, 352256, 4096, 0, 10633132, 0, 3).KnownLoaderMatch);
+        Assert.False(InvokeBudget(ablSha, 1048576, xblSha, 245760, 2048, 0, 10633132, 0, 3).KnownLoaderMatch);
+        Assert.False(InvokeBudget(ablSha, 1048576, KnownXblSha, 245760, 4096, 0, 10633132, 0, 3).KnownLoaderMatch);
+    }
+
     private static InternalSlotLoaderBudget InvokeBudget(
         string ablSha, long ablBytes, string xblSha, long xblBytes,
         int pageSize, long bootRamdisk, long vendorRamdisk, long initRamdisk,

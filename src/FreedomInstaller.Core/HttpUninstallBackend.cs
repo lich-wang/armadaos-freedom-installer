@@ -1652,6 +1652,9 @@ public sealed class HttpUninstallBackend : IUninstallBackend
                 $"The bound model '{identity.Model}' is not a supported unit.", nameof(binding));
         }
 
+        // Identified is not writable: a model whose uninstall route is not open never reaches the session.
+        DeviceModelRoutes.RequireWriteRoute(DeviceProbe.CanonicalModel(identity.Model));
+
         if (identity.BootloaderState != BootloaderState.Unlocked)
         {
             throw new ArgumentException("The bound bootloader is not unlocked.", nameof(binding));
