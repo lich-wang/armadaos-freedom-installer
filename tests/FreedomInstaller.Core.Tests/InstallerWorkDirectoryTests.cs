@@ -51,6 +51,54 @@ public sealed class InstallerWorkDirectoryTests : IDisposable
         Assert.Equal(expectedPath, result.RootPath);
     }
 
+    [Fact]
+    public void Automatic_MacOsUsesLocalAppDataAndSkipsSystemVolumes()
+    {
+        // DriveInfo on macOS lists "/" plus the boot container's system volumes,
+        // all Fixed apfs with the same free space.
+        string expectedPath = Path.Combine(_localAppData, "ArmadaOS Freedom", "Work");
+        var volumes = new[]
+        {
+            new InstallerWorkVolume("/System/Volumes/Data", DriveType.Fixed, true, "apfs"),
+            new InstallerWorkVolume("/System/Volumes/Preboot", DriveType.Fixed, true, "apfs"),
+            new InstallerWorkVolume("/System/Volumes/VM", DriveType.Fixed, true, "apfs"),
+            new InstallerWorkVolume("/System/Volumes/xarts/", DriveType.Fixed, true, "apfs"),
+            new InstallerWorkVolume(Path.GetPathRoot(_sandboxRoot)!, DriveType.Fixed, true, "apfs")
+        };
+        var probed = new List<string>();
+
+        var result = InstallerWorkDirectory.Resolve(
+            null,
+            _localAppData,
+            volumes,
+            _ => 100 * GiB,
+            candidate =>
+            {
+                probed.Add(candidate);
+                if (!candidate.StartsWith(_sandboxRoot, StringComparison.Ordinal))
+                    throw new IOException($"unexpected probe outside the test sandbox: {candidate}");
+                InstallerWorkDirectory.ProbeDirectoryWritability(candidate);
+            });
+
+        Assert.Equal(expectedPath, result.RootPath);
+        Assert.Equal(new[] { expectedPath }, probed);
+    }
+
+    [Fact]
+    public void Automatic_AcceptsExternalHfsVolume()
+    {
+        var volumes = new[] { new InstallerWorkVolume(_dataRoot, DriveType.Fixed, true, "hfs") };
+
+        var result = InstallerWorkDirectory.Resolve(
+            null,
+            _localAppData,
+            volumes,
+            _ => 20 * GiB,
+            InstallerWorkDirectory.ProbeDirectoryWritability);
+
+        Assert.Equal(Path.Combine(_dataRoot, "ArmadaOS Freedom", "Work"), result.RootPath);
+    }
+
     [Theory]
     [InlineData(512L * 1024 * 1024)]
     [InlineData(5 * GiB)]

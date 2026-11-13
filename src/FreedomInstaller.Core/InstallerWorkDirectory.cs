@@ -12,8 +12,13 @@ public static class InstallerWorkDirectory
 
     private static readonly HashSet<string> SupportedFileSystems = new(StringComparer.OrdinalIgnoreCase)
     {
-        "NTFS", "ReFS", "exFAT", "ext4", "xfs", "btrfs"
+        "NTFS", "ReFS", "exFAT", "ext4", "xfs", "btrfs", "apfs", "hfs"
     };
+
+    // macOS mounts the system's own APFS volumes (Data, VM, Preboot, ...) here.
+    // They share the boot container's free space with "/", whose user folders
+    // are firmlinked to Data, so only "/" and external disks are candidates.
+    private const string MacSystemVolumesRoot = "/System/Volumes";
 
     private static readonly StringComparison PathComparison =
         OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
@@ -58,7 +63,7 @@ public static class InstallerWorkDirectory
             return ResolveExplicit(explicitRoot.Trim(), readFree, verifyWritable);
 
         var eligibleVolumes = volumes
-            .Where(v => v is not null && !string.IsNullOrWhiteSpace(v.RootPath) && v.IsReady && v.Type == DriveType.Fixed && SupportedFileSystems.Contains(v.FileSystem?.Trim() ?? string.Empty))
+            .Where(v => v is not null && !string.IsNullOrWhiteSpace(v.RootPath) && v.IsReady && v.Type == DriveType.Fixed && SupportedFileSystems.Contains(v.FileSystem?.Trim() ?? string.Empty) && !IsMacSystemVolume(v.RootPath))
             .ToList();
 
         string? matchedLocalVolumeRoot = null;
@@ -227,6 +232,13 @@ public static class InstallerWorkDirectory
             current = Directory.GetParent(current)?.FullName;
         }
         return null;
+    }
+
+    private static bool IsMacSystemVolume(string rootPath)
+    {
+        string root = rootPath.TrimEnd('/');
+        return string.Equals(root, MacSystemVolumesRoot, StringComparison.Ordinal)
+            || root.StartsWith(MacSystemVolumesRoot + "/", StringComparison.Ordinal);
     }
 
     private static bool IsSameOrDescendant(string candidatePath, string rootPath)
