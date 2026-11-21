@@ -633,7 +633,18 @@
                                 </StackPanel>
                             </Grid>
                         </Button>
-                        <Button IsEnabled="False" Theme="{StaticResource FunctionCard}" Margin="0,0,12,12">
+                        <Button Tag="offline-upgrade" Click="OnSelectOperation" Theme="{StaticResource FunctionCard}" Margin="0,0,12,12">
+                            <Grid ColumnDefinitions="Auto,*">
+                                <Border Grid.Column="0" Classes="FunctionCardIcon">
+                                    <Path Data="M 12 3 V 15 M 7 10 L 12 15 L 17 10 M 5 20 H 19" Width="18" Height="18" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center" Stroke="{DynamicResource AccentBrush}" StrokeThickness="1.8" />
+                                </Border>
+                                <StackPanel Grid.Column="1">
+                                    <TextBlock Text="{DynamicResource Static.Function.OfflineUpdate.Title}" FontSize="16" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}" TextWrapping="Wrap" />
+                                    <TextBlock Text="{DynamicResource Static.Function.OfflineUpdate.Desc}" FontSize="12" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,6,0,0" />
+                                </StackPanel>
+                            </Grid>
+                        </Button>
+                        <Button Tag="prepare" Click="OnSelectOperation" Theme="{StaticResource FunctionCard}" Margin="0,0,12,12">
                             <Grid ColumnDefinitions="Auto,*">
                                 <Border Grid.Column="0" Classes="FunctionCardIcon">
                                     <Path Data="M 12 3 V 15 M 7 10 L 12 15 L 17 10 M 4 20 H 20" Width="18" Height="18" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center" Stroke="{DynamicResource AccentBrush}" StrokeThickness="1.8" />
@@ -641,11 +652,10 @@
                                 <StackPanel Grid.Column="1">
                                     <TextBlock Text="{DynamicResource Static.Function.Prepare.Title}" FontSize="16" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}" TextWrapping="Wrap" />
                                     <TextBlock Text="{DynamicResource Static.Function.Prepare.Desc}" FontSize="12" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,6,0,0" />
-                                    <TextBlock Text="{DynamicResource Static.Mac.WindowsOnly}" FontSize="11" Foreground="{DynamicResource WarnBrush}" Margin="0,6,0,0" />
                                 </StackPanel>
                             </Grid>
                         </Button>
-                        <Button IsEnabled="False" Theme="{StaticResource FunctionCard}" Margin="0,0,12,12">
+                        <Button Tag="repair" Click="OnSelectOperation" Theme="{StaticResource FunctionCard}" Margin="0,0,12,12">
                             <Grid ColumnDefinitions="Auto,*">
                                 <Border Grid.Column="0" Classes="FunctionCardIcon">
                                     <Path Data="M 4 12 C 4 7.6 7.6 4 12 4 M 4 8 V 12 H 8 M 20 12 C 20 16.4 16.4 20 12 20 M 20 16 V 12 H 16" Width="18" Height="18" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center" Stroke="{DynamicResource AccentBrush}" StrokeThickness="1.8" />
@@ -653,7 +663,6 @@
                                 <StackPanel Grid.Column="1">
                                     <TextBlock Text="{DynamicResource Static.Function.Repair.Title}" FontSize="16" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}" TextWrapping="Wrap" />
                                     <TextBlock Text="{DynamicResource Static.Function.Repair.Desc}" FontSize="12" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,6,0,0" />
-                                    <TextBlock Text="{DynamicResource Static.Mac.WindowsOnly}" FontSize="11" Foreground="{DynamicResource WarnBrush}" Margin="0,6,0,0" />
                                 </StackPanel>
                             </Grid>
                         </Button>
@@ -965,6 +974,588 @@
                                 <StackPanel>
                                     <TextBlock x:Name="GlobalLogEmptyText" Text="{DynamicResource Dynamic.Global.LogEmpty}" Classes="CaptionText" />
                                     <StackPanel x:Name="GlobalLogList" />
+                                </StackPanel>
+                            </ScrollViewer>
+                        </Expander>
+                    </Border>
+                </StackPanel>
+            </ScrollViewer>
+
+            <!-- ================= 离线升级（与 WPF 窗口的 OfflineUpgradeView 一致；控件名加 Offline 前缀） ================= -->
+            <ScrollViewer x:Name="OfflineUpgradePage"
+                          Grid.Column="0"
+                          Grid.ColumnSpan="3"
+                          VerticalScrollBarVisibility="Auto"
+                          HorizontalScrollBarVisibility="Disabled"
+                          IsVisible="False"
+                          Padding="0,0,14,0"
+                          Margin="0,0,0,12">
+                <StackPanel>
+                    <Button x:Name="OfflineBackButton" Theme="{StaticResource GhostButton}" Content="{DynamicResource Static.OfflineUpdate.Back}" Click="OnOfflineUpgradeBackAsync" HorizontalAlignment="Left" Margin="0,0,0,10" />
+                    <TextBlock Text="{DynamicResource Static.OfflineUpdate.Title}" Classes="H1Text" />
+                    <TextBlock Text="{DynamicResource Static.OfflineUpdate.Desc}" Classes="BodyInkText" TextWrapping="Wrap" Margin="0,4,0,14" />
+
+                    <Border Classes="CardBorder" Margin="0,0,0,12">
+                        <StackPanel>
+                            <TextBlock Text="{DynamicResource Static.OfflineUpdate.SectionConnection}" Classes="H2Text" />
+                            <TextBlock Text="{DynamicResource Static.OfflineUpdate.ConnectionHelper}" Classes="CaptionText" TextWrapping="Wrap" Margin="0,4,0,10" />
+
+                            <TextBlock x:Name="OfflineTransportLabel" Text="{DynamicResource Static.OfflineUpdate.Transport}" Classes="FieldLabelText" Margin="0,0,0,4" />
+                            <ComboBox x:Name="OfflineTransportCombo" SelectedIndex="0" SelectionChanged="OnOfflineConnectionSelectionChanged" HorizontalAlignment="Stretch" Margin="0,0,0,10">
+                                <ComboBoxItem x:Name="OfflineTransportUsbItem" Content="{DynamicResource Static.OfflineUpdate.TransportUsb}" />
+                                <ComboBoxItem x:Name="OfflineTransportWifiItem" Content="{DynamicResource Static.OfflineUpdate.TransportWifi}" />
+                            </ComboBox>
+
+                            <TextBlock x:Name="OfflineUsbAddressHint" Text="{DynamicResource Static.OfflineUpdate.UsbAddressHint}" Classes="CaptionText" TextWrapping="Wrap" Margin="0,0,0,10" />
+
+                            <StackPanel x:Name="OfflineWifiAddressPanel" IsVisible="False" Margin="0,0,0,10">
+                                <Grid ColumnDefinitions="110,*,110,*">
+                                    <TextBlock x:Name="OfflineWifiAddressLabel" Text="{DynamicResource Static.OfflineUpdate.WifiAddress}" Classes="FieldLabelText" VerticalAlignment="Center" Margin="0,0,8,0" />
+                                    <TextBox x:Name="OfflineHostBox" Grid.Column="1" Theme="{StaticResource InputTextBox}" Margin="0,0,14,0" />
+                                    <TextBlock x:Name="OfflinePortLabel" Grid.Column="2" Text="{DynamicResource Static.OfflineUpdate.Port}" Classes="FieldLabelText" VerticalAlignment="Center" Margin="0,0,8,0" />
+                                    <TextBox x:Name="OfflinePortBox" Grid.Column="3" Theme="{StaticResource InputTextBox}" Text="22" />
+                                </Grid>
+                            </StackPanel>
+
+                            <TextBlock x:Name="OfflineCredentialLabel" Text="{DynamicResource Static.OfflineUpdate.Credential}" Classes="FieldLabelText" Margin="0,0,0,4" />
+                            <ComboBox x:Name="OfflineCredentialCombo" SelectedIndex="0" SelectionChanged="OnOfflineConnectionSelectionChanged" HorizontalAlignment="Stretch" Margin="0,0,0,10">
+                                <ComboBoxItem x:Name="OfflineCredentialDefaultItem" Content="{DynamicResource Static.OfflineUpdate.CredentialDefault}" />
+                                <ComboBoxItem x:Name="OfflineCredentialCustomItem" Content="{DynamicResource Static.OfflineUpdate.CredentialCustom}" />
+                                <ComboBoxItem x:Name="OfflineCredentialKeyItem" Content="{DynamicResource Static.OfflineUpdate.CredentialKey}" />
+                            </ComboBox>
+
+                            <TextBlock x:Name="OfflineDefaultAccountText" Text="{DynamicResource Static.OfflineUpdate.DefaultAccountSummary}" Classes="FieldValueText" TextWrapping="Wrap" Margin="0,0,0,10" />
+
+                            <StackPanel x:Name="OfflineManualUserNamePanel" IsVisible="False">
+                                <TextBlock x:Name="OfflineUserLabel" Text="{DynamicResource Static.OfflineUpdate.User}" Classes="FieldLabelText" Margin="0,0,0,4" />
+                                <TextBox x:Name="OfflineUserBox" Theme="{StaticResource InputTextBox}" />
+                            </StackPanel>
+
+                            <StackPanel x:Name="OfflineCustomPasswordPanel" IsVisible="False">
+                                <TextBlock x:Name="OfflinePasswordLabel" Text="{DynamicResource Static.OfflineUpdate.Password}" Classes="FieldLabelText" Margin="0,10,0,4" />
+                                <TextBox x:Name="OfflinePasswordBox" Theme="{StaticResource InputTextBox}" PasswordChar="●" MaxLength="512" />
+                                <TextBlock Text="{DynamicResource Static.OfflineUpdate.PasswordPrivacy}" Classes="CaptionText" TextWrapping="Wrap" Margin="0,4,0,0" />
+                            </StackPanel>
+
+                            <StackPanel x:Name="OfflineKeyFieldsPanel" IsVisible="False">
+                                <TextBlock x:Name="OfflineUsbKeyEnrollmentHint" Text="{DynamicResource Static.OfflineUpdate.UsbKeyEnrollmentHint}" Classes="CaptionText" TextWrapping="Wrap" Margin="0,10,0,10" />
+                                <TextBlock x:Name="OfflineWifiKeyEnrollmentHint" Text="{DynamicResource Static.OfflineUpdate.WifiKeyEnrollmentHint}" Classes="CaptionText" TextWrapping="Wrap" Margin="0,10,0,10" IsVisible="False" />
+                                <TextBlock x:Name="OfflineKeyPathLabel" Text="{DynamicResource Static.OfflineUpdate.KeyPath}" Classes="FieldLabelText" Margin="0,0,0,4" />
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <TextBox x:Name="OfflineKeyPathBox" Theme="{StaticResource InputTextBox}" Margin="0,0,8,0" />
+                                    <Button x:Name="OfflineBrowseKeyButton" Grid.Column="1" Theme="{StaticResource SecondaryButton}" Content="{DynamicResource Static.OfflineUpdate.BrowseKey}" Click="OnBrowseOfflineKey" />
+                                </Grid>
+                                <TextBlock Text="{DynamicResource Static.OfflineUpdate.KeyPrivacy}" Classes="CaptionText" TextWrapping="Wrap" Margin="0,4,0,8" />
+                                <TextBlock x:Name="OfflineKnownHostsLabel" Text="{DynamicResource Static.OfflineUpdate.KnownHosts}" Classes="FieldLabelText" Margin="0,0,0,4" />
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <TextBox x:Name="OfflineKnownHostsBox" Theme="{StaticResource InputTextBox}" Margin="0,0,8,0" />
+                                    <Button x:Name="OfflineBrowseHostsButton" Grid.Column="1" Theme="{StaticResource SecondaryButton}" Content="{DynamicResource Static.OfflineUpdate.BrowseHosts}" Click="OnBrowseOfflineKnownHosts" />
+                                </Grid>
+                            </StackPanel>
+
+                            <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
+                                <Button x:Name="OfflineConnectButton" Theme="{StaticResource PrimaryButton}" Content="{DynamicResource Static.OfflineUpdate.ConnectTablet}" Click="OnConnectOfflineTabletAsync" Margin="0,0,8,0" />
+                                <Button x:Name="OfflineDisconnectButton" Theme="{StaticResource SecondaryButton}" Content="{DynamicResource Static.OfflineUpdate.Disconnect}" Click="OnDisconnectOfflineSshAsync" IsEnabled="False" />
+                            </StackPanel>
+
+                            <StackPanel x:Name="OfflinePairingPanel" IsVisible="False" Margin="0,10,0,0">
+                                <TextBlock Text="{DynamicResource Static.OfflineUpdate.PairingHeading}" Classes="H2Text" Margin="0,0,0,4" />
+                                <TextBlock Text="{DynamicResource Static.OfflineUpdate.PairingInstructions}" Classes="CaptionText" TextWrapping="Wrap" Margin="0,0,0,8" />
+                                <TextBlock x:Name="OfflinePairingHostText" Classes="CaptionText" TextWrapping="Wrap" Margin="0,0,0,8" />
+                                <TextBlock Text="{DynamicResource Static.OfflineUpdate.PairingCommand}" Classes="FieldLabelText" Margin="0,0,0,4" />
+                                <TextBox x:Name="OfflinePairingCommandBox" Theme="{StaticResource InputTextBox}" IsReadOnly="True" TextWrapping="Wrap" AcceptsReturn="True" MinHeight="55" MaxHeight="95" />
+                                <Button x:Name="OfflineCopyPairingCommandButton" Theme="{StaticResource SecondaryButton}" Content="{DynamicResource Static.OfflineUpdate.CopyPairingCommand}" Click="OnCopyOfflinePairingCommand" HorizontalAlignment="Left" Margin="0,8,0,10" />
+                                <TextBlock Text="{DynamicResource Static.OfflineUpdate.PairingReceipt}" Classes="FieldLabelText" Margin="0,0,0,4" />
+                                <TextBox x:Name="OfflinePairingReceiptBox" Theme="{StaticResource InputTextBox}" MaxLength="4096" TextWrapping="Wrap" AcceptsReturn="True" MinHeight="65" MaxHeight="105" TextChanged="OnOfflinePairingReceiptChanged" Margin="0,0,0,8" />
+                                <Button x:Name="OfflineConfirmPairingButton" Theme="{StaticResource SecondaryButton}" Content="{DynamicResource Static.OfflineUpdate.ConfirmPairing}" Click="OnConfirmOfflinePairingAsync" HorizontalAlignment="Left" IsEnabled="False" />
+                            </StackPanel>
+
+                            <TextBlock x:Name="OfflineDeviceText" Text="{DynamicResource Static.OfflineUpdate.DevicePending}" Classes="FieldValueText" TextWrapping="Wrap" Margin="0,10,0,0" />
+                        </StackPanel>
+                    </Border>
+
+                    <Border Classes="CardBorder" Margin="0,0,0,12">
+                        <StackPanel>
+                            <TextBlock Text="{DynamicResource Static.OfflineUpdate.SectionPackage}" Classes="H2Text" />
+                            <TextBlock Text="{DynamicResource Static.OfflineUpdate.PackageHelp}" Classes="CaptionText" TextWrapping="Wrap" Margin="0,4,0,8" />
+                            <TextBlock Text="{DynamicResource Static.OfflineUpdate.PackagePath}" Classes="FieldLabelText" Margin="0,0,0,4" />
+                            <Grid ColumnDefinitions="*,Auto">
+                                <TextBox x:Name="OfflinePackagePathBox" Theme="{StaticResource InputTextBox}" IsReadOnly="True" Margin="0,0,8,0" />
+                                <Button x:Name="OfflineBrowsePackageButton" Grid.Column="1" Theme="{StaticResource SecondaryButton}" Content="{DynamicResource Static.OfflineUpdate.BrowsePackage}" Click="OnBrowseOfflinePackage" />
+                            </Grid>
+                            <Button x:Name="OfflineValidatePackageButton" Theme="{StaticResource SecondaryButton}" Content="{DynamicResource Static.OfflineUpdate.ValidatePackage}" Click="OnValidateOfflinePackageAsync" HorizontalAlignment="Left" Margin="0,8,0,0" />
+                            <TextBlock x:Name="OfflinePackageText" Text="{DynamicResource Static.OfflineUpdate.PackagePending}" Classes="FieldValueText" TextWrapping="Wrap" Margin="0,8,0,0" />
+                            <TextBlock Text="{DynamicResource Static.OfflineUpdate.Session}" Classes="FieldLabelText" Margin="0,10,0,4" />
+                            <ComboBox x:Name="OfflineSessionCombo" SelectionChanged="OnOfflineSessionSelectionChanged" HorizontalAlignment="Stretch" IsEnabled="False" />
+                            <TextBlock Text="{DynamicResource Static.OfflineUpdate.SessionHelper}" Classes="CaptionText" TextWrapping="Wrap" Margin="0,4,0,8" />
+                            <StackPanel Orientation="Horizontal">
+                                <Button x:Name="OfflineRefreshButton" Theme="{StaticResource SecondaryButton}" Content="{DynamicResource Static.OfflineUpdate.Refresh}" Click="OnRefreshOfflineStatusAsync" Margin="0,0,8,0" />
+                                <Button x:Name="OfflinePrepareButton" Theme="{StaticResource PrimaryButton}" Content="{DynamicResource Static.OfflineUpdate.Prepare}" Click="OnPrepareOfflineUpgradeAsync" IsEnabled="False" />
+                            </StackPanel>
+                            <!-- 与 WPF 一致：只为已核实的失败准备显示，单独确认后开新会话，从不重试失败的记录。 -->
+                            <Button x:Name="OfflineStartReplacementSessionButton" Theme="{StaticResource SecondaryButton}" Content="{DynamicResource Static.OfflineUpdate.StartReplacementSession}" Click="OnStartReplacementOfflineSessionAsync" IsEnabled="False" IsVisible="False" HorizontalAlignment="Left" Margin="0,8,0,0" />
+                        </StackPanel>
+                    </Border>
+
+                    <Border Classes="CardBorder" Margin="0,0,0,12">
+                        <StackPanel>
+                            <TextBlock Text="{DynamicResource Static.OfflineUpdate.SectionConfirm}" Classes="H2Text" />
+                            <TextBlock Text="{DynamicResource Static.OfflineUpdate.PrepareHelp}" Classes="CaptionText" TextWrapping="Wrap" Margin="0,4,0,8" />
+                            <CheckBox x:Name="OfflineConfirmCheck" Theme="{StaticResource RiskCheckBox}" IsCheckedChanged="OnOfflineConfirmChanged" IsEnabled="False">
+                                <TextBlock Text="{DynamicResource Static.OfflineUpdate.Confirm}" TextWrapping="Wrap" />
+                            </CheckBox>
+                            <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
+                                <Button x:Name="OfflineExecuteButton" Theme="{StaticResource PrimaryButton}" Content="{DynamicResource Static.OfflineUpdate.Execute}" Click="OnExecuteOfflineUpgradeAsync" IsEnabled="False" Margin="0,0,8,0" />
+                                <Button x:Name="OfflineStopWaitingButton" Theme="{StaticResource SecondaryButton}" Content="{DynamicResource Static.OfflineUpdate.StopWaiting}" Click="OnStopWaitingOfflineUpgrade" IsEnabled="False" />
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+
+                    <Border Classes="CardBorder" Background="{DynamicResource SurfaceAltBrush}">
+                        <StackPanel>
+                            <TextBlock x:Name="OfflineStateText" Text="{DynamicResource Static.OfflineUpdate.StatePending}" Classes="BodyInkText" TextWrapping="Wrap" />
+                            <Button x:Name="OfflineRestartToVerifyButton" Theme="{StaticResource PrimaryButton}" Content="{DynamicResource Static.OfflineUpdate.RestartToVerify}" Click="OnRestartToVerifyOfflineUpgradeAsync" IsEnabled="False" HorizontalAlignment="Left" Margin="0,10,0,0" />
+                            <ProgressBar x:Name="OfflineTransferProgress" Minimum="0" Maximum="100" Value="0" Height="8" Margin="0,8,0,4" />
+                            <TextBlock x:Name="OfflineProgressText" Classes="CaptionText" Text="0%" />
+                            <TextBlock Text="{DynamicResource Static.OfflineUpdate.RecoveryPath}" Classes="FieldLabelText" Margin="0,8,0,2" />
+                            <TextBlock x:Name="OfflineRecoveryPathText" Text="{DynamicResource Static.OfflineUpdate.RecoveryPending}" Classes="FieldValueText" TextWrapping="Wrap" />
+                            <Expander x:Name="OfflineDetailsExpander" Theme="{StaticResource SectionExpander}" IsExpanded="False" Margin="0,8,0,0">
+                                <Expander.Header>
+                                    <TextBlock Text="{DynamicResource Static.OfflineUpdate.Details}" Classes="H2Text" />
+                                </Expander.Header>
+                                <TextBlock x:Name="OfflineDetailsText" Text="{DynamicResource Static.OfflineUpdate.DetailsPending}" Classes="BodyText" TextWrapping="Wrap" />
+                            </Expander>
+                            <Expander x:Name="OfflineLogExpander" Theme="{StaticResource SectionExpander}" IsExpanded="False" Margin="0,6,0,0">
+                                <Expander.Header>
+                                    <TextBlock Text="{DynamicResource Static.OfflineUpdate.Log}" Classes="H2Text" />
+                                </Expander.Header>
+                                <TextBox x:Name="OfflineLogText" Theme="{StaticResource InputTextBox}" IsReadOnly="True" MaxHeight="200" TextWrapping="Wrap" AcceptsReturn="True" />
+                            </Expander>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </ScrollViewer>
+
+            <!-- ================= Android 更新前准备 / 更新后修复（与 WPF 窗口的引导维护四步一致；控件名加 BootMaintenance 前缀） ================= -->
+            <ScrollViewer x:Name="BootMaintenancePage"
+                          Grid.Column="0"
+                          Grid.ColumnSpan="3"
+                          VerticalScrollBarVisibility="Auto"
+                          HorizontalScrollBarVisibility="Disabled"
+                          IsVisible="False"
+                          Padding="0,0,14,0"
+                          Margin="0,0,0,12">
+                <StackPanel>
+                    <Button x:Name="BootMaintenanceBackButton"
+                            Content="{DynamicResource Dynamic.BackToFunctions}"
+                            Theme="{StaticResource GhostButton}"
+                            Click="OnBootMaintenanceBackHome"
+                            HorizontalAlignment="Left"
+                            Padding="8,4"
+                            Margin="0,0,0,10" />
+                    <TextBlock x:Name="BootMaintenanceModeTitle" Classes="H1Text" />
+                    <TextBlock x:Name="BootMaintenanceModeHint" Classes="BodyText" TextWrapping="Wrap" Margin="0,6,0,0" />
+
+                    <!-- 四步导航：与 WPF 共享四步侧栏的维护标签一致。 -->
+                    <UniformGrid Columns="4" Margin="0,14,0,0">
+                        <RadioButton x:Name="BootMaintenanceNavCheck"
+                                     GroupName="BootMaintenanceSteps"
+                                     Theme="{StaticResource StepNavItem}"
+                                     Tag="0"
+                                     IsChecked="True"
+                                     IsCheckedChanged="OnBootMaintenanceNavChecked"
+                                     Margin="0,0,8,0">
+                            <StackPanel>
+                                <TextBlock Text="01" FontSize="11" />
+                                <TextBlock Text="{DynamicResource Static.InternalInstall.Nav.Connect}" FontSize="14" FontWeight="SemiBold" />
+                            </StackPanel>
+                        </RadioButton>
+                        <RadioButton x:Name="BootMaintenanceNavBackup"
+                                     GroupName="BootMaintenanceSteps"
+                                     Theme="{StaticResource StepNavItem}"
+                                     Tag="1"
+                                     IsCheckedChanged="OnBootMaintenanceNavChecked"
+                                     Margin="0,0,8,0">
+                            <StackPanel>
+                                <TextBlock Text="02" FontSize="11" />
+                                <TextBlock Text="{DynamicResource Static.InternalInstall.Nav.Backup}" FontSize="14" FontWeight="SemiBold" />
+                            </StackPanel>
+                        </RadioButton>
+                        <RadioButton x:Name="BootMaintenanceNavSources"
+                                     GroupName="BootMaintenanceSteps"
+                                     Theme="{StaticResource StepNavItem}"
+                                     Tag="2"
+                                     IsCheckedChanged="OnBootMaintenanceNavChecked"
+                                     Margin="0,0,8,0">
+                            <StackPanel>
+                                <TextBlock Text="03" FontSize="11" />
+                                <TextBlock Text="{DynamicResource Dynamic.BootMaintenance.Nav.Sources}" FontSize="14" FontWeight="SemiBold" />
+                            </StackPanel>
+                        </RadioButton>
+                        <RadioButton x:Name="BootMaintenanceNavConfirm"
+                                     GroupName="BootMaintenanceSteps"
+                                     Theme="{StaticResource StepNavItem}"
+                                     Tag="3"
+                                     IsCheckedChanged="OnBootMaintenanceNavChecked">
+                            <StackPanel>
+                                <TextBlock Text="04" FontSize="11" />
+                                <TextBlock Text="{DynamicResource Dynamic.BootMaintenance.Nav.Confirm}" FontSize="14" FontWeight="SemiBold" />
+                            </StackPanel>
+                        </RadioButton>
+                    </UniformGrid>
+
+                    <!-- 01 连接检测：默认只读安卓身份；9008 路线用历史备份核对；高级完整检查进入 Fastboot。 -->
+                    <StackPanel x:Name="BootMaintenanceCheckPage" Margin="0,18,0,0">
+                        <TextBlock Text="{DynamicResource Static.InternalInstall.Check.Title}" Classes="H1Text" />
+                        <TextBlock Text="{DynamicResource Dynamic.Shared.DeviceCheckLead}" Classes="BodyText" TextWrapping="Wrap" Margin="0,6,0,0" />
+                        <TextBlock Text="{DynamicResource Static.Connection.Gen4UsbPortHint}"
+                                   Classes="BodyInkText"
+                                   FontWeight="SemiBold"
+                                   TextWrapping="Wrap"
+                                   Margin="0,8,0,0" />
+
+                        <TextBlock x:Name="BootMaintenanceDevicesLabel"
+                                   Text="{DynamicResource Static.InternalInstall.Check.DeviceLabel}"
+                                   Classes="FieldLabelText"
+                                   Margin="0,14,0,6"
+                                   IsVisible="False" />
+                        <ComboBox x:Name="BootMaintenanceDevicesCombo"
+                                  SelectionChanged="OnBootMaintenanceDeviceSelected"
+                                  IsEnabled="False"
+                                  IsVisible="False" />
+
+                        <WrapPanel Margin="0,12,0,0">
+                            <Button x:Name="BootMaintenanceCheckButton"
+                                    Click="OnCheckBootMaintenanceDevice"
+                                    Theme="{StaticResource PrimaryButton}">
+                                <TextBlock x:Name="BootMaintenanceCheckButtonText" Text="{DynamicResource Dynamic.Shared.CheckTablet}" />
+                            </Button>
+                        </WrapPanel>
+
+                        <StackPanel x:Name="BootMaintenanceEntryPanel" Margin="0,14,0,0">
+                            <CheckBox x:Name="BootMaintenanceAlreadyEdlCheck"
+                                      Content="{DynamicResource Dynamic.BootMaintenance.AlreadyEdl}"
+                                      IsCheckedChanged="OnBootMaintenanceEdlRouteChanged" />
+                            <TextBlock x:Name="BootMaintenanceEdlHintText"
+                                       Text="{DynamicResource Dynamic.BootMaintenance.EdlHint}"
+                                       Classes="CaptionText"
+                                       TextWrapping="Wrap"
+                                       Margin="0,6,0,0" />
+                            <TextBlock Text="{DynamicResource Dynamic.BootMaintenance.OriginalSource}"
+                                       Classes="FieldLabelText"
+                                       Margin="0,12,0,6" />
+                            <Grid x:Name="BootMaintenanceEntryOriginalRow" ColumnDefinitions="*,Auto">
+                                <TextBox x:Name="BootMaintenanceEntryOriginalBox"
+                                         Grid.Column="0"
+                                         Theme="{StaticResource InputTextBox}"
+                                         IsReadOnly="True" />
+                                <Button x:Name="BootMaintenanceEntryOriginalBrowseButton"
+                                        Grid.Column="1"
+                                        Content="{DynamicResource Static.Browse}"
+                                        Click="OnBrowseBootMaintenanceOriginal"
+                                        Theme="{StaticResource SecondaryButton}"
+                                        Margin="10,0,0,0" />
+                            </Grid>
+
+                            <Expander Theme="{StaticResource SectionExpander}" IsExpanded="False" Margin="0,12,0,0">
+                                <Expander.Header>
+                                    <TextBlock Text="{DynamicResource Dynamic.Shared.AdvancedCheckHeader}"
+                                               Classes="BodyInkText"
+                                               FontSize="13"
+                                               FontWeight="SemiBold" />
+                                </Expander.Header>
+                                <StackPanel>
+                                    <TextBlock Text="{DynamicResource Dynamic.Shared.AdvancedCheckWarning}"
+                                               Classes="CaptionText"
+                                               TextWrapping="Wrap"
+                                               Margin="0,2,0,6" />
+                                    <Button x:Name="BootMaintenanceFastbootCheckButton"
+                                            Content="{DynamicResource Dynamic.Shared.AdvancedCheckButton}"
+                                            Click="OnCheckBootMaintenanceDeviceAdvanced"
+                                            Theme="{StaticResource SecondaryButton}"
+                                            IsEnabled="False"
+                                            HorizontalAlignment="Left" />
+                                </StackPanel>
+                            </Expander>
+                        </StackPanel>
+
+                        <TextBlock x:Name="BootMaintenanceCheckProgressText"
+                                   Classes="BodyInkText"
+                                   Margin="0,12,0,0"
+                                   Text="{DynamicResource Static.InternalInstall.Check.ProgressInitial}" />
+                        <TextBlock x:Name="BootMaintenanceCheckStatusText"
+                                   Classes="BodyText"
+                                   TextWrapping="Wrap"
+                                   Margin="0,4,0,0"
+                                   Text="{DynamicResource Static.InternalInstall.Check.StatusInitial}" />
+
+                        <Border Classes="CardBorder" Margin="0,16,0,0">
+                            <StackPanel>
+                                <TextBlock Text="{DynamicResource Static.InternalInstall.Check.FieldsTitle}" Classes="H2Text" />
+                                <Grid Margin="0,10,0,0" ColumnDefinitions="96,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto">
+                                    <TextBlock Grid.Row="0" Grid.Column="0" Text="{DynamicResource Static.FieldModel}" Classes="FieldLabelText" />
+                                    <TextBlock Grid.Row="0" Grid.Column="1" x:Name="BootMaintenanceModelText" Text="—" Classes="FieldValueText" />
+                                    <TextBlock Grid.Row="1" Grid.Column="0" Text="{DynamicResource Static.FieldSerial}" Classes="FieldLabelText" />
+                                    <TextBlock Grid.Row="1" Grid.Column="1" x:Name="BootMaintenanceSerialText" Text="—" Classes="FieldValueText" />
+                                    <TextBlock Grid.Row="2" Grid.Column="0" Text="{DynamicResource Static.FieldFirmware}" Classes="FieldLabelText" />
+                                    <TextBlock Grid.Row="2" Grid.Column="1" x:Name="BootMaintenanceFirmwareText" Text="—" Classes="FieldValueText" />
+                                    <TextBlock Grid.Row="3" Grid.Column="0" Text="{DynamicResource Static.FieldBootState}" Classes="FieldLabelText" />
+                                    <TextBlock Grid.Row="3" Grid.Column="1" x:Name="BootMaintenanceBootloaderText" Text="—" Classes="FieldValueText" />
+                                    <TextBlock Grid.Row="4" Grid.Column="0" Text="{DynamicResource Static.InternalInstall.Field.Route}" Classes="FieldLabelText" />
+                                    <TextBlock Grid.Row="4" Grid.Column="1" x:Name="BootMaintenanceRouteText" Text="—" Classes="FieldValueText" />
+                                    <TextBlock Grid.Row="5" Grid.Column="0" Text="{DynamicResource Static.InternalInstall.Field.Power}" Classes="FieldLabelText" />
+                                    <TextBlock Grid.Row="5" Grid.Column="1" x:Name="BootMaintenancePowerText" Text="—" Classes="FieldValueText" />
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+
+                    <!-- 02 系统备份：只允许全新备份（维护模式不复用已有备份）。 -->
+                    <StackPanel x:Name="BootMaintenanceBackupPage" IsVisible="False" Margin="0,18,0,0">
+                        <TextBlock Text="{DynamicResource Static.InternalInstall.Backup.Title}" Classes="H1Text" />
+                        <TextBlock Text="{DynamicResource Static.InternalInstall.Backup.Warning}"
+                                   Classes="BodyText Warn"
+                                   TextWrapping="Wrap"
+                                   Margin="0,8,0,0" />
+                        <TextBlock Text="{DynamicResource Static.InternalInstall.Backup.FolderLabel}"
+                                   Classes="FieldLabelText"
+                                   Margin="0,16,0,6" />
+                        <Grid ColumnDefinitions="*,Auto">
+                            <TextBox x:Name="BootMaintenanceBackupFolderBox"
+                                     Grid.Column="0"
+                                     Theme="{StaticResource InputTextBox}"
+                                     IsReadOnly="True" />
+                            <Button x:Name="BootMaintenanceBackupBrowseButton"
+                                    Grid.Column="1"
+                                    Content="{DynamicResource Static.Browse}"
+                                    Click="OnBrowseBootMaintenanceBackupFolder"
+                                    Theme="{StaticResource SecondaryButton}"
+                                    IsEnabled="False"
+                                    Margin="10,0,0,0" />
+                        </Grid>
+                        <WrapPanel Margin="0,14,0,0">
+                            <Button x:Name="BootMaintenanceBackupButton"
+                                    Content="{DynamicResource Static.InternalInstall.Backup.StartButton}"
+                                    Click="OnBackupBootMaintenance"
+                                    Theme="{StaticResource PrimaryButton}"
+                                    IsEnabled="False" />
+                        </WrapPanel>
+                        <ProgressBar x:Name="BootMaintenanceBackupProgressBar"
+                                     Minimum="0"
+                                     Maximum="100"
+                                     Value="0"
+                                     Height="6"
+                                     Margin="0,14,0,0" />
+                        <TextBlock x:Name="BootMaintenanceBackupStatusText"
+                                   Classes="BodyInkText"
+                                   TextWrapping="Wrap"
+                                   Margin="0,10,0,0"
+                                   Text="{DynamicResource Static.InternalInstall.Backup.StatusInitial}" />
+                        <TextBlock x:Name="BootMaintenanceBackupVerifiedText"
+                                   Classes="CaptionText"
+                                   TextWrapping="Wrap"
+                                   Margin="0,4,0,0"
+                                   Text="{DynamicResource Static.InternalInstall.Backup.VerifiedInitial}" />
+                        <Border Classes="CardBorder" Margin="0,16,0,0">
+                            <StackPanel>
+                                <TextBlock Text="{DynamicResource Dynamic.InternalInstall.Backup.DetailTitle}" Classes="H2Text" />
+                                <TextBlock Text="{DynamicResource Dynamic.InternalInstall.Backup.DetailDirectoryLabel}" Classes="FieldLabelText" Margin="0,10,0,4" />
+                                <TextBlock x:Name="BootMaintenanceBackupDirectoryText" Classes="FieldValueText" Text="—" />
+                                <TextBlock Text="{DynamicResource Dynamic.InternalInstall.Backup.DetailManifestLabel}" Classes="FieldLabelText" Margin="0,8,0,4" />
+                                <TextBlock x:Name="BootMaintenanceBackupManifestText" Classes="FieldValueText" Text="—" />
+                                <TextBlock Text="{DynamicResource Dynamic.InternalInstall.Backup.DetailManifestHashLabel}" Classes="FieldLabelText" Margin="0,8,0,4" />
+                                <TextBlock x:Name="BootMaintenanceBackupManifestHashText" Classes="FieldValueText" Text="—" />
+                            </StackPanel>
+                        </Border>
+                        <Border Classes="CardBorder" Margin="0,16,0,0">
+                            <StackPanel>
+                                <TextBlock Text="{DynamicResource Static.InternalInstall.Backup.CoverageTitle}" Classes="H2Text" />
+                                <TextBlock Text="{DynamicResource Static.InternalInstall.Backup.Coverage}" Classes="BodyText" TextWrapping="Wrap" Margin="0,8,0,0" />
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+
+                    <!-- 03 准备引导：原厂恢复来源；更新后修复另有项目备份与系统安装包。 -->
+                    <StackPanel x:Name="BootMaintenanceSourcesPage" IsVisible="False" Margin="0,18,0,0">
+                        <TextBlock x:Name="BootMaintenanceSourcesTitle"
+                                   Text="{DynamicResource Dynamic.BootMaintenance.SourceTitle}"
+                                   Classes="H1Text" />
+                        <TextBlock x:Name="BootMaintenanceSourcesLead"
+                                   Text="{DynamicResource Dynamic.BootMaintenance.SourceLead}"
+                                   Classes="BodyText"
+                                   TextWrapping="Wrap"
+                                   Margin="0,6,0,0" />
+
+                        <Border Classes="CardBorder" Margin="0,16,0,0">
+                            <StackPanel>
+                                <TextBlock Text="{DynamicResource Dynamic.BootMaintenance.OriginalSource}"
+                                           Classes="FieldLabelText"
+                                           Margin="0,0,0,6" />
+                                <Grid x:Name="BootMaintenanceOriginalGrid" ColumnDefinitions="*,Auto">
+                                    <TextBox x:Name="BootMaintenanceOriginalBox"
+                                             Grid.Column="0"
+                                             Theme="{StaticResource InputTextBox}"
+                                             IsReadOnly="True" />
+                                    <Button x:Name="BootMaintenanceOriginalBrowseButton"
+                                            Grid.Column="1"
+                                            Content="{DynamicResource Static.Browse}"
+                                            Click="OnBrowseBootMaintenanceOriginal"
+                                            Theme="{StaticResource SecondaryButton}"
+                                            Margin="10,0,0,0" />
+                                </Grid>
+                                <TextBlock x:Name="BootMaintenanceFreshBackupHint"
+                                           Text="{DynamicResource Dynamic.BootMaintenance.FreshBackup}"
+                                           Classes="CaptionText"
+                                           TextWrapping="Wrap"
+                                           Margin="0,6,0,0" />
+
+                                <StackPanel x:Name="BootMaintenanceRepairSourcesRow"
+                                            IsVisible="False"
+                                            Margin="0,14,0,0">
+                                    <TextBlock x:Name="BootMaintenanceProjectLabel"
+                                               Text="{DynamicResource Dynamic.BootMaintenance.ProjectSource}"
+                                               Classes="FieldLabelText"
+                                               Margin="0,0,0,6" />
+                                    <Grid x:Name="BootMaintenanceProjectGrid" ColumnDefinitions="*,Auto">
+                                        <TextBox x:Name="BootMaintenanceProjectBox"
+                                                 Grid.Column="0"
+                                                 Theme="{StaticResource InputTextBox}"
+                                                 IsReadOnly="True" />
+                                        <Button x:Name="BootMaintenanceProjectBrowseButton"
+                                                Grid.Column="1"
+                                                Content="{DynamicResource Static.Browse}"
+                                                Click="OnBrowseBootMaintenanceProject"
+                                                Theme="{StaticResource SecondaryButton}"
+                                                Margin="10,0,0,0" />
+                                    </Grid>
+                                    <TextBlock Text="{DynamicResource Dynamic.BootMaintenance.Package}"
+                                               Classes="FieldLabelText"
+                                               Margin="0,12,0,6" />
+                                    <TextBox x:Name="BootMaintenancePackageBox"
+                                             Theme="{StaticResource InputTextBox}"
+                                             TextChanged="OnBootMaintenancePackagePathChanged" />
+                                    <TextBlock x:Name="BootMaintenancePackageHint"
+                                               Text="{DynamicResource Dynamic.BootMaintenance.PackageHint}"
+                                               Classes="CaptionText"
+                                               TextWrapping="Wrap"
+                                               Margin="0,6,0,0" />
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+
+                        <TextBlock x:Name="BootMaintenancePrepareStatusText"
+                                   Classes="BodyText"
+                                   TextWrapping="Wrap"
+                                   Margin="0,12,0,0" />
+                    </StackPanel>
+
+                    <!-- 04 确认操作：只陈述 Core 真实准备的结果；执行按钮在本页底部。 -->
+                    <StackPanel x:Name="BootMaintenanceConfirmPage" IsVisible="False" Margin="0,18,0,0">
+                        <TextBlock x:Name="BootMaintenanceConfirmTitle"
+                                   Text="{DynamicResource Dynamic.BootMaintenance.ConfirmTitle}"
+                                   Classes="H1Text" />
+                        <TextBlock x:Name="BootMaintenanceDeviceText"
+                                   Classes="BodyText"
+                                   TextWrapping="Wrap"
+                                   Margin="0,8,0,0" />
+                        <TextBlock x:Name="BootMaintenanceBackupLocationsText"
+                                   Classes="BodyText"
+                                   TextWrapping="Wrap"
+                                   Margin="0,6,0,0" />
+
+                        <StackPanel x:Name="BootMaintenanceSlotsPanel" Margin="0,12,0,0" />
+
+                        <Expander x:Name="BootMaintenanceRegionsPanel"
+                                  Theme="{StaticResource SectionExpander}"
+                                  Margin="0,12,0,0">
+                            <Expander.Header>
+                                <TextBlock Text="{DynamicResource Dynamic.BootMaintenance.RegionsTitle}" Classes="BodyInkText" FontWeight="SemiBold" />
+                            </Expander.Header>
+                            <StackPanel x:Name="BootMaintenanceRegionsHost" />
+                        </Expander>
+
+                        <CheckBox x:Name="BootMaintenanceRiskCheck"
+                                  IsCheckedChanged="OnBootMaintenanceRiskChanged"
+                                  Margin="0,14,0,0">
+                            <TextBlock x:Name="BootMaintenanceRiskText" TextWrapping="Wrap" FontSize="13" />
+                        </CheckBox>
+
+                        <TextBlock x:Name="BootMaintenanceConfirmStatusText"
+                                   Classes="BodyText"
+                                   TextWrapping="Wrap"
+                                   Margin="0,12,0,0" />
+                        <TextBlock x:Name="BootMaintenanceProgressText"
+                                   Classes="CaptionText"
+                                   TextWrapping="Wrap"
+                                   Margin="0,6,0,0" />
+                        <ProgressBar x:Name="BootMaintenanceProgressBar"
+                                     Height="4"
+                                     Minimum="0"
+                                     Maximum="100"
+                                     Value="0"
+                                     Margin="0,8,0,0" />
+                    </StackPanel>
+
+                    <!-- 本页的上一步 / 下一步 / 执行（WPF 窗口用共享底栏）。 -->
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,18,0,0">
+                        <Button x:Name="BootMaintenancePrevButton"
+                                Content="{DynamicResource Static.Previous}"
+                                Click="OnBootMaintenancePrevious"
+                                IsEnabled="False"
+                                Theme="{StaticResource SecondaryButton}" />
+                        <Button x:Name="BootMaintenanceNextButton"
+                                Content="{DynamicResource Static.Next}"
+                                Click="OnBootMaintenanceNext"
+                                IsEnabled="False"
+                                Theme="{StaticResource PrimaryButton}"
+                                Margin="10,0,0,0" />
+                        <Button x:Name="BootMaintenanceActionButton"
+                                Click="OnExecuteBootMaintenance"
+                                IsEnabled="False"
+                                IsVisible="False"
+                                Theme="{StaticResource PrimaryButton}"
+                                Margin="10,0,0,0">
+                            <TextBlock x:Name="BootMaintenanceActionButtonText" />
+                        </Button>
+                    </StackPanel>
+
+                    <!-- 仍有真实 9008 现场且未真实完成时显示：一次复位离开。 -->
+                    <Border x:Name="BootMaintenanceExitPanel"
+                            Classes="CardBorder"
+                            Margin="0,16,0,0"
+                            IsVisible="False">
+                        <StackPanel>
+                            <TextBlock Text="{DynamicResource Dynamic.InternalInstall.Exit.Title}" Classes="H2Text" />
+                            <Button x:Name="BootMaintenanceExitButton"
+                                    Content="{DynamicResource Dynamic.BootMaintenance.Exit.Button}"
+                                    Click="OnExitBootMaintenance"
+                                    Theme="{StaticResource SecondaryButton}"
+                                    HorizontalAlignment="Left"
+                                    Margin="0,10,0,0" />
+                            <TextBlock x:Name="BootMaintenanceExitStatusText"
+                                       Classes="BodyText"
+                                       TextWrapping="Wrap"
+                                       Margin="0,8,0,0"
+                                       Text="{DynamicResource Dynamic.BootMaintenance.Exit.Ready}" />
+                        </StackPanel>
+                    </Border>
+
+                    <!-- 四步共用的日志 -->
+                    <Border Classes="CardBorder" Margin="0,16,0,0">
+                        <Expander Theme="{StaticResource SectionExpander}" Margin="0" IsExpanded="False">
+                            <Expander.Header>
+                                <TextBlock Text="{DynamicResource Dynamic.InternalInstall.Log.Title}" Classes="H2Text" />
+                            </Expander.Header>
+                            <ScrollViewer x:Name="BootMaintenanceLogScrollViewer"
+                                          Height="160"
+                                          Margin="0,10,0,0"
+                                          VerticalScrollBarVisibility="Auto"
+                                          HorizontalScrollBarVisibility="Disabled">
+                                <StackPanel>
+                                    <TextBlock x:Name="BootMaintenanceLogEmptyText"
+                                               Text="{DynamicResource Dynamic.InternalInstall.Log.Empty}"
+                                               Classes="CaptionText" />
+                                    <StackPanel x:Name="BootMaintenanceLogList" />
                                 </StackPanel>
                             </ScrollViewer>
                         </Expander>

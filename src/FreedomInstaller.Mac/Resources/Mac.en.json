@@ -21,5 +21,7 @@
   "Dynamic.Mac.Backup.AlreadyInEdl": "The tablet is already in 9008; checking its USB serial against the tablet from step 1 (SoC serial {0})…",
   "Dynamic.Mac.Backup.AlreadyInEdlLog": "The tablet is already in 9008 and its USB serial {0} matches the SoC serial read in step 1; backing up directly.",
   "Dynamic.Mac.Close.BusyTitle": "A step is still running",
-  "Dynamic.Mac.Close.BusyBody": "The current step is still talking to the tablet (fastboot, entering 9008, backup or exit). Keep USB connected and close the window after it has finished."
+  "Dynamic.Mac.Close.BusyBody": "The current step is still talking to the tablet (fastboot, entering 9008, backup or exit). Keep USB connected and close the window after it has finished.",
+  "Dynamic.Mac.Close.ProbeFailedTitle": "Tablet state could not be confirmed",
+  "Dynamic.Mac.Close.ProbeFailedBody": "The device probe before leaving failed (for example the tablet was disconnected), so no reset was sent and nothing was written. You can close the window only: no further command is sent to the device, and the backup and records are kept. The tablet may still be in 9008; restart it by hand. Close the window anyway?"
 }

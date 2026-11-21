@@ -119,8 +119,27 @@ public sealed class OfflineUpdateSshConnectionTests : IDisposable
         var psi = StartInfo(Options("2001:0db8:0:0:0:0:0:1"));
         Assert.Contains("2001:db8::1", psi.ArgumentList);
         var option = Assert.Single(psi.ArgumentList, a => a.StartsWith("UserKnownHostsFile=", StringComparison.Ordinal));
-        Assert.Equal($"UserKnownHostsFile=\"{_knownHosts.Replace('\\', '/')}\"", option);
+        Assert.Equal($"UserKnownHostsFile=\"{OfflineUpdateSshConnection.EncodeKnownHostsPath(_knownHosts)}\"", option);
         Assert.Equal(_directory, psi.WorkingDirectory);
+    }
+
+    [Fact]
+    public void StartInfo_KeepsALiteralBackslashInAUnixKnownHostsFileName()
+    {
+        if (OperatingSystem.IsWindows())
+        {
+            Assert.Equal("C:/Users/a/known_hosts", OfflineUpdateSshConnection.EncodeKnownHostsPath(@"C:\Users\a\known_hosts"));
+            return;
+        }
+
+        // On macOS and Linux "tablet\lab" is one file name: OpenSSH must read that file, not "tablet/lab".
+        var knownHosts = Path.Combine(_directory, @"tablet\lab");
+        File.WriteAllText(knownHosts, "harmless known-hosts fixture text\n", new UTF8Encoding(false));
+        var psi = StartInfo(Options() with { KnownHostsFile = knownHosts });
+
+        var option = Assert.Single(psi.ArgumentList, a => a.StartsWith("UserKnownHostsFile=", StringComparison.Ordinal));
+        Assert.Equal($"UserKnownHostsFile=\"{knownHosts.Replace(@"\", @"\\", StringComparison.Ordinal)}\"", option);
+        Assert.DoesNotContain("tablet/lab", option, StringComparison.Ordinal);
     }
 
     [Theory]

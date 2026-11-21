@@ -221,6 +221,15 @@ public static class OfflineUpdateSshEnrollment
             return keyScanExecutable;
         }
 
+        if (OperatingSystem.IsMacOS())
+        {
+            // macOS ships OpenSSH in the sealed system volume.
+            const string macPath = "/usr/bin/ssh-keyscan";
+            if (!File.Exists(macPath))
+                throw new IOException($"The default ssh-keyscan executable was not found at '{macPath}'.");
+            return macPath;
+        }
+
         if (!OperatingSystem.IsWindows())
             throw new IOException("No default ssh-keyscan executable is available on this platform; supply the absolute path explicitly.");
 

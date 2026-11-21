@@ -38,6 +38,13 @@
        words. Mac.*.json only adds the few lines that name the Mac host instead of Windows. -->
   <ItemGroup>
     <Compile Include="..\FreedomInstaller.App\UiText.cs" Link="Shared\UiText.cs" />
+    <!-- The offline upgrade page's window-free state helpers, shared as files so both front ends gate the same
+         buttons, list the same saved sessions and accept the same recovery bundles. -->
+    <Compile Include="..\FreedomInstaller.App\OfflineUpdateConnectionUiState.cs" Link="Shared\OfflineUpdateConnectionUiState.cs" />
+    <Compile Include="..\FreedomInstaller.App\OfflineUpdateUiState.cs" Link="Shared\OfflineUpdateUiState.cs" />
+    <Compile Include="..\FreedomInstaller.App\OfflineUpdateSessionCatalog.cs" Link="Shared\OfflineUpdateSessionCatalog.cs" />
+    <Compile Include="..\FreedomInstaller.App\OfflineUpdateRecoveryCatalog.cs" Link="Shared\OfflineUpdateRecoveryCatalog.cs" />
+    <Compile Include="..\FreedomInstaller.App\OfflineBootstrapAssets.cs" Link="Shared\OfflineBootstrapAssets.cs" />
     <EmbeddedResource Include="..\FreedomInstaller.App\Resources\Static.*.json"
                       Link="Shared\Resources\%(Filename)%(Extension)"
                       LogicalName="FreedomInstaller.Strings.%(Filename).json"
@@ -71,6 +78,19 @@
   </ItemGroup>
   <ItemGroup Condition="'$(BundledPlatformToolsArchive)' != '' and Exists('$(BundledPlatformToolsArchive)')">
     <EmbeddedResource Include="$(BundledPlatformToolsArchive)" LogicalName="FreedomInstaller.PlatformTools.zip" />
+  </ItemGroup>
+
+  <!-- Optional legacy offline-updater bootstrap inputs, under the same logical names and metadata as the WPF
+       installer. A normal build omits both: installed systems already provide the update service and the
+       offline upgrade page connects to the native updater directly (OfflineBootstrapAssets then returns null). -->
+  <ItemGroup Condition="'$(BundledOfflineBootstrapScript)' != '' and Exists('$(BundledOfflineBootstrapScript)')">
+    <EmbeddedResource Include="$(BundledOfflineBootstrapScript)" LogicalName="FreedomInstaller.OfflineBootstrap.Script.py" WithCulture="false" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(BundledOfflineUpdaterBundle)' != '' and Exists('$(BundledOfflineUpdaterBundle)')">
+    <EmbeddedResource Include="$(BundledOfflineUpdaterBundle)" LogicalName="FreedomInstaller.OfflineBootstrap.Updater.tar.gz" WithCulture="false" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(BundledOfflineUpdaterVersion)' != ''">
+    <AssemblyMetadata Include="BundledOfflineUpdaterVersion" Value="$(BundledOfflineUpdaterVersion)" />
   </ItemGroup>
 
   <!-- The same third-party notices the WPF installer embeds, byte-for-byte and under the same logical names:

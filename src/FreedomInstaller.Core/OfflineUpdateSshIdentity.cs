@@ -179,7 +179,9 @@ public static class OfflineUpdateSshIdentityStore
     {
         candidate = !string.IsNullOrWhiteSpace(candidate) ? candidate : OperatingSystem.IsWindows()
             ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.System), "OpenSSH", "ssh-keygen.exe")
-            : throw new IOException("ssh-keygen executable must be explicitly provided on non-Windows.");
+            : OperatingSystem.IsMacOS()
+                ? "/usr/bin/ssh-keygen" // macOS ships OpenSSH in the sealed system volume.
+                : throw new IOException("ssh-keygen executable must be explicitly provided on non-Windows.");
         if (!Path.IsPathFullyQualified(candidate))
             throw new ArgumentException($"ssh-keygen executable must be absolute and fully-qualified: '{candidate}'.");
         ValidateNoForbiddenChars(candidate);

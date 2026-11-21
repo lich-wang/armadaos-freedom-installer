@@ -153,6 +153,10 @@ public static class OfflineUpdateUsbDiscovery
         ArgumentNullException.ThrowIfNull(runner);
         token.ThrowIfCancellationRequested();
 
+        // macOS has no PowerShell/CIM; the I/O Registry gives the same USB-device-to-adapter proof there.
+        if (powershellExecutable is null && OperatingSystem.IsMacOS())
+            return await OfflineUpdateMacUsbDiscovery.FindSingleAsync(runner, token).ConfigureAwait(false);
+
         var command = BuildCommand(powershellExecutable);
         var result = await runner.RunAsync(command, token).ConfigureAwait(false);
 

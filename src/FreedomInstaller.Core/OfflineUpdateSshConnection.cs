@@ -201,7 +201,7 @@ public sealed class OfflineUpdateSshConnection : IOfflineUpdateConnection
             "-T", "-a", "-x",
             "-o", "BatchMode=yes",
             "-o", "StrictHostKeyChecking=yes",
-            "-o", $"UserKnownHostsFile=\"{NormalizeSlashes(knownHostsPath)}\"",
+            "-o", $"UserKnownHostsFile=\"{EncodeKnownHostsPath(knownHostsPath)}\"",
             "-o", "GlobalKnownHostsFile=none",
             "-o", "UpdateHostKeys=no",
             "-o", "VerifyHostKeyDNS=no",
@@ -261,6 +261,14 @@ public sealed class OfflineUpdateSshConnection : IOfflineUpdateConnection
     {
         if (sshExecutable is null)
         {
+            if (OperatingSystem.IsMacOS())
+            {
+                // macOS ships OpenSSH in the sealed system volume.
+                const string macPath = "/usr/bin/ssh";
+                if (!File.Exists(macPath))
+                    throw new IOException($"The macOS OpenSSH client was not found at the expected location ('{macPath}'); supply SshExecutable.");
+                return macPath;
+            }
             if (!OperatingSystem.IsWindows())
                 throw new IOException("No default OpenSSH executable is available on this platform; supply SshExecutable explicitly.");
             var path = Path.Combine(
@@ -336,7 +344,14 @@ public sealed class OfflineUpdateSshConnection : IOfflineUpdateConnection
         return fullPath;
     }
 
-    private static string NormalizeSlashes(string path) => path.Replace('\\', '/');
+    /// <summary>
+    /// The known-hosts path as a quoted <c>-o</c> value. OpenSSH splits option values itself and treats a
+    /// backslash before a quote, a space or another backslash as an escape. On Windows a backslash is a separator,
+    /// so it becomes '/'; elsewhere it is part of a file name, so it is doubled and OpenSSH reads the same file the
+    /// caller validated. Quotes are already rejected by <see cref="ValidateOpenSshPath"/>.
+    /// </summary>
+    internal static string EncodeKnownHostsPath(string path) =>
+        OperatingSystem.IsWindows() ? path.Replace('\\', '/') : path.Replace("\\", "\\\\", StringComparison.Ordinal);
 
     private static async Task DrainStderrAsync(Process process, CancellationToken cancellationToken, OfflineUpdateSshConnection owner)
     {

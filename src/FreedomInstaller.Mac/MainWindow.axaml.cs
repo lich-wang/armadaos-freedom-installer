@@ -35,6 +35,7 @@ public partial class MainWindow : Window
         _l.Apply();
         ApplyTheme();
         InitializeComponent();
+        InitializeOfflineUpgradeView();
         UpdateThemeToggle();
         RenderInternalInstallPlaceholders();
         Closing += OnWindowClosing;
@@ -85,6 +86,7 @@ public partial class MainWindow : Window
         _preferences.Language = _l.IsEnglish ? "zh-CN" : "en";
         _preferences.Save();
         _l.SetLanguage(_preferences.Language);
+        RerenderOfflineUpgradeLog();
     }
 
     private void OnShowSupport(object? sender, RoutedEventArgs e)
@@ -97,6 +99,8 @@ public partial class MainWindow : Window
         _pageBeforeSupport = EnvironmentPage.IsVisible ? EnvironmentPage
             : HomePage.IsVisible ? HomePage
             : GlobalRecoveryPage.IsVisible ? GlobalRecoveryPage
+            : OfflineUpgradePage.IsVisible ? OfflineUpgradePage
+            : BootMaintenancePage.IsVisible ? BootMaintenancePage
             : WorkflowScrollViewer;
         AboutVersionText.Text = InstallerDisplayVersion.ForAssembly(typeof(MainWindow).Assembly);
         ShowView(SupportPage);
@@ -119,6 +123,8 @@ public partial class MainWindow : Window
         HomePage.IsVisible = ReferenceEquals(view, HomePage);
         SupportPage.IsVisible = ReferenceEquals(view, SupportPage);
         GlobalRecoveryPage.IsVisible = ReferenceEquals(view, GlobalRecoveryPage);
+        OfflineUpgradePage.IsVisible = ReferenceEquals(view, OfflineUpgradePage);
+        BootMaintenancePage.IsVisible = ReferenceEquals(view, BootMaintenancePage);
         var wizard = ReferenceEquals(view, WorkflowScrollViewer);
         WorkflowScrollViewer.IsVisible = wizard;
         WorkflowSidebar.IsVisible = wizard;
@@ -160,13 +166,20 @@ public partial class MainWindow : Window
 
         switch ((sender as Control)?.Tag as string)
         {
-            case "global-backup" when !HasInternalInstallDeviceSession:
+            case "global-backup" when !HasInternalInstallDeviceSession && !HasBootMaintenanceDeviceSession:
                 ShowGlobalRecoveryPage(GlobalRecoveryMode.Backup);
                 break;
-            case "global-restore" when !HasInternalInstallDeviceSession:
+            case "global-restore" when !HasInternalInstallDeviceSession && !HasBootMaintenanceDeviceSession:
                 ShowGlobalRecoveryPage(GlobalRecoveryMode.Restore);
                 break;
-            case "install" when !HasGlobalRecoveryProtectedState:
+            case "offline-upgrade" when !HasLiveDeviceSession:
+                ShowOfflineUpgradePage();
+                break;
+            // Android 更新前准备 / 更新后修复：与 WPF 的 "prepare" / "repair" 标签相同；另一页面持有 9008 会话时不进入。
+            case "prepare" or "repair" when !HasInternalInstallDeviceSession && !HasGlobalRecoveryProtectedState:
+                ShowBootMaintenancePage((string)((Control)sender!).Tag!);
+                break;
+            case "install" when !HasGlobalRecoveryProtectedState && !HasBootMaintenanceDeviceSession:
                 ShowView(WorkflowScrollViewer);
                 NavigateInternalInstallStep(_internalInstallStep);
                 break;
@@ -299,6 +312,15 @@ public partial class MainWindow : Window
             return;
         }
 
+        // The offline upgrade page goes first, like the WPF window's own closing handler for it: its exchanges run
+        // as busy work, so the generic busy refusal below would otherwise keep an SSH session from ever closing.
+        // It cancels the running exchange, disconnects, releases the imported package (saved session records stay)
+        // and then closes the window itself.
+        if (await OnOfflineUpgradeClosingAsync(e))
+        {
+            return;
+        }
+
         if (_globalOperationActive)
         {
             // A global connect / backup / restore / reset is running: the window stays open until it ends.
@@ -353,6 +375,13 @@ public partial class MainWindow : Window
                 T("Dynamic.InternalInstall.Execution.Dialog.Title"),
                 T("Dynamic.InternalInstall.Execution.Lead.Running"),
                 T("Dynamic.Mac.Dialog.Ok"));
+            return;
+        }
+
+        // The boot-maintenance page holds (or may hold) a 9008 session or an unresolved outcome: its own close gate,
+        // like the WPF window's maintenance branch of the internal install closing handler.
+        if (await OnBootMaintenanceClosingAsync(e))
+        {
             return;
         }
 
@@ -481,6 +510,7 @@ public partial class MainWindow : Window
         }
 
         DisposeGlobalRecoveryOnClose();
+        DisposeBootMaintenanceOnClose();
         DisposeInternalInstall();
     }
 

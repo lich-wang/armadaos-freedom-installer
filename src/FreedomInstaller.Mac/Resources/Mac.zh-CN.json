@@ -21,5 +21,7 @@
   "Dynamic.Mac.Backup.AlreadyInEdl": "平板已在 9008，正在用 USB 序列号核对是否为第 1 步检查过的平板（SoC 序列号 {0}）…",
   "Dynamic.Mac.Backup.AlreadyInEdlLog": "平板已在 9008，USB 序列号 {0} 与第 1 步读到的 SoC 序列号一致，直接备份。",
   "Dynamic.Mac.Close.BusyTitle": "操作仍在进行",
-  "Dynamic.Mac.Close.BusyBody": "当前步骤仍在操作平板（fastboot、进入 9008、备份或退出）。请保持 USB 连接，等这一步结束后再关闭窗口。"
+  "Dynamic.Mac.Close.BusyBody": "当前步骤仍在操作平板（fastboot、进入 9008、备份或退出）。请保持 USB 连接，等这一步结束后再关闭窗口。",
+  "Dynamic.Mac.Close.ProbeFailedTitle": "无法确认平板状态",
+  "Dynamic.Mac.Close.ProbeFailedBody": "离开前的设备探测失败（例如平板已断开连接），因此没有发送复位，也没有写入任何内容。可以仅关闭窗口：不会再向设备发送命令，备份与操作记录都会保留。平板可能仍停在 9008，请手动重启。仍要仅关闭窗口吗？"
 }
