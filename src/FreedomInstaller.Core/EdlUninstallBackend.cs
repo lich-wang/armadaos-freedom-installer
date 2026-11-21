@@ -874,6 +874,17 @@ public sealed partial class EdlUninstallBackend : IUserdataUninstallBackend, IDi
                 }
             }
 
+            // The new boot candidates verify against each slot's root vbmeta. On the boot-only routes that root is
+            // never a write target, so it is re-read here too: a root changed on the device after capture stops
+            // the run before the first write instead of leaving a boot its chain no longer accepts.
+            foreach (string rootRole in new[] { "vbmeta_a", "vbmeta_b" })
+            {
+                if (_currentMenu.SourceRegions.ContainsKey(rootRole) && !preflightRoles.Contains(rootRole))
+                {
+                    preflightRoles.Add(rootRole);
+                }
+            }
+
             var probedLuns = new HashSet<int>();
 
             foreach (string role in preflightRoles)

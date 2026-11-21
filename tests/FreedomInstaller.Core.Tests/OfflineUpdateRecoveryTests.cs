@@ -47,9 +47,36 @@ public sealed class OfflineUpdateRecoveryTests
     }
 
     [Theory]
+    [InlineData("TB999XX")]
+    [InlineData("tb710fu")]
+    public async Task SaveAsync_RejectsAModelOutsideTheOfflineUpgradeListBeforeReadingAnySource(string model)
+    {
+        using var root = new TestRoot();
+        var fixture = CreateFixture(model);
+        var sourceCalls = 0;
+
+        Task<Stream> OpenSource(string path, CancellationToken token)
+        {
+            sourceCalls++;
+            return Task.FromResult<Stream>(new MemoryStream());
+        }
+
+        await Assert.ThrowsAsync<InvalidDataException>(() =>
+            PackageImporter.SaveOfflineUpdateRecoveryAsync(
+                root.WorkRoot,
+                fixture.Context,
+                fixture.PlanBytes,
+                fixture.ManifestBytes,
+                OpenSource));
+
+        Assert.Equal(0, sourceCalls);
+    }
+
+    [Theory]
     [InlineData("TB322FC")]
     [InlineData("TB323FU")]
-    public async Task SaveAsync_CopiesAndBindsBothModelsWithoutAutomaticCleanup(string model)
+    [InlineData("TB710FU")]
+    public async Task SaveAsync_CopiesAndBindsEveryUpgradeModelWithoutAutomaticCleanup(string model)
     {
         using var root = new TestRoot();
         var fixture = CreateFixture(model);

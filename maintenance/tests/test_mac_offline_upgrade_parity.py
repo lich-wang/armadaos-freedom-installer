@@ -126,9 +126,12 @@ class MacOfflineUpgradeParityTests(unittest.TestCase):
         self.assertEqual(_shared_calls(WPF_CODE), _shared_calls(MAC_CODE))
 
     def test_accepted_models_match(self):
-        # The model gate lives in the page code on both sides (Core does not route offline upgrades by model).
-        pattern = r'string\.Equals\(model, "([A-Z0-9]+)"'
-        self.assertEqual(set(re.findall(pattern, _code(WPF_CODE))), set(re.findall(pattern, _code(MAC_CODE))))
+        # Both pages gate the connected model on Core's single offline-upgrade list, never on their own names.
+        gate = "UpdatePackageDescriptor.SupportsOfflineUpgrade(model)"
+        for paths in (WPF_CODE, MAC_CODE):
+            code = _code(paths)
+            self.assertIn(gate, code)
+            self.assertNotRegex(code, r'string\.Equals\(model, "TB[0-9]{3}[A-Z]{2}"')
 
     def test_updater_version_floor_matches(self):
         pattern = r'IsUpdaterVersionAtLeast\(deviceInfo, "([0-9.]+)"\)'

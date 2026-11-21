@@ -6,7 +6,6 @@
   "Static.Environment.Driver": "9008 connection",
   "Static.Environment.Guide": "No tablet is needed yet. Later, connect the tablet to this Mac with a USB cable.",
   "Static.Environment.HomeLink": "Environment",
-  "Static.Mac.WindowsOnly": "Windows version only for now",
   "Dynamic.Mac.Environment.SystemReady": "macOS {0} ({1}) is supported.",
   "Dynamic.Mac.Environment.SystemUnsupported": "This system is not supported. macOS 12 or later on Apple silicon is required.",
   "Dynamic.Mac.Environment.ToolsReady": "Connection tools ready: adb {0}; 9008 tools {1}; boot packers {2}.",

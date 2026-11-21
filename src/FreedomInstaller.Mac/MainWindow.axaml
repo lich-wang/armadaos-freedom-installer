@@ -666,7 +666,7 @@
                                 </StackPanel>
                             </Grid>
                         </Button>
-                        <Button IsEnabled="False" Theme="{StaticResource FunctionCard}" Margin="0,0,12,12">
+                        <Button Tag="uninstall" Click="OnSelectOperation" Theme="{StaticResource FunctionCard}" Margin="0,0,12,12">
                             <Grid ColumnDefinitions="Auto,*">
                                 <Border Grid.Column="0" Classes="FunctionCardIcon">
                                     <Path Data="M 4 12 H 15 M 11 8 L 15 12 L 11 16 M 19 5 V 19" Width="18" Height="18" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center" Stroke="{DynamicResource AccentBrush}" StrokeThickness="1.8" />
@@ -674,7 +674,6 @@
                                 <StackPanel Grid.Column="1">
                                     <TextBlock Text="{DynamicResource Static.Function.Uninstall.Title}" FontSize="16" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}" TextWrapping="Wrap" />
                                     <TextBlock Text="{DynamicResource Static.Function.Uninstall.Desc}" FontSize="12" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,6,0,0" />
-                                    <TextBlock Text="{DynamicResource Static.Mac.WindowsOnly}" FontSize="11" Foreground="{DynamicResource WarnBrush}" Margin="0,6,0,0" />
                                 </StackPanel>
                             </Grid>
                         </Button>
@@ -1556,6 +1555,344 @@
                                                Text="{DynamicResource Dynamic.InternalInstall.Log.Empty}"
                                                Classes="CaptionText" />
                                     <StackPanel x:Name="BootMaintenanceLogList" />
+                                </StackPanel>
+                            </ScrollViewer>
+                        </Expander>
+                    </Border>
+                </StackPanel>
+            </ScrollViewer>
+
+            <!-- ================= 卸载 Linux（与 WPF 窗口卸载向导的三步一致：检查、恢复资料、确认；控件名加 Uninstall 前缀） ================= -->
+            <ScrollViewer x:Name="UninstallPage"
+                          Grid.Column="0"
+                          Grid.ColumnSpan="3"
+                          VerticalScrollBarVisibility="Auto"
+                          HorizontalScrollBarVisibility="Disabled"
+                          IsVisible="False"
+                          Padding="0,0,14,0"
+                          Margin="0,0,0,12">
+                <StackPanel>
+                    <Button x:Name="UninstallBackButton"
+                            Content="{DynamicResource Dynamic.BackToFunctions}"
+                            Theme="{StaticResource GhostButton}"
+                            Click="OnUninstallBackHome"
+                            HorizontalAlignment="Left"
+                            Padding="8,4"
+                            Margin="0,0,0,10" />
+                    <TextBlock Text="{DynamicResource Dynamic.Mode.Uninstall}" Classes="H1Text" />
+                    <TextBlock Text="{DynamicResource Dynamic.ModeHint.Uninstall}" Classes="BodyText" TextWrapping="Wrap" Margin="0,6,0,0" />
+
+                    <!-- 三步导航：WPF 共享四步侧栏在卸载中隐藏内部第 1 步，显示序号 01/02/03；Tag 用内部步骤号 0/2/3。 -->
+                    <UniformGrid Columns="3" Margin="0,14,0,0">
+                        <RadioButton x:Name="UninstallNavCheck"
+                                     GroupName="UninstallSteps"
+                                     Theme="{StaticResource StepNavItem}"
+                                     Tag="0"
+                                     IsChecked="True"
+                                     IsCheckedChanged="OnUninstallNavChecked"
+                                     Margin="0,0,8,0">
+                            <StackPanel>
+                                <TextBlock Text="01" FontSize="11" />
+                                <TextBlock Text="{DynamicResource Static.InternalInstall.Nav.Connect}" FontSize="14" FontWeight="SemiBold" />
+                            </StackPanel>
+                        </RadioButton>
+                        <RadioButton x:Name="UninstallNavSources"
+                                     GroupName="UninstallSteps"
+                                     Theme="{StaticResource StepNavItem}"
+                                     Tag="2"
+                                     IsCheckedChanged="OnUninstallNavChecked"
+                                     Margin="0,0,8,0">
+                            <StackPanel>
+                                <TextBlock Text="02" FontSize="11" />
+                                <TextBlock Text="{DynamicResource Dynamic.UserdataUninstall.Nav.Sources}" FontSize="14" FontWeight="SemiBold" />
+                            </StackPanel>
+                        </RadioButton>
+                        <RadioButton x:Name="UninstallNavConfirm"
+                                     GroupName="UninstallSteps"
+                                     Theme="{StaticResource StepNavItem}"
+                                     Tag="3"
+                                     IsCheckedChanged="OnUninstallNavChecked">
+                            <StackPanel>
+                                <TextBlock Text="03" FontSize="11" />
+                                <TextBlock Text="{DynamicResource Dynamic.UserdataUninstall.Nav.Confirm}" FontSize="14" FontWeight="SemiBold" />
+                            </StackPanel>
+                        </RadioButton>
+                    </UniformGrid>
+
+                    <!-- 01 连接检测：默认走完整自动检查（安卓 -> Fastboot -> 安卓，取得锁态）；9008 路线读板内 / 电脑恢复资料核对身份。 -->
+                    <StackPanel x:Name="UninstallCheckPage" Margin="0,18,0,0">
+                        <TextBlock Text="{DynamicResource Static.InternalInstall.Check.Title}" Classes="H1Text" />
+                        <TextBlock Text="{DynamicResource Dynamic.Shared.DeviceCheckLead}" Classes="BodyText" TextWrapping="Wrap" Margin="0,6,0,0" />
+                        <TextBlock Text="{DynamicResource Static.Connection.Gen4UsbPortHint}"
+                                   Classes="BodyInkText"
+                                   FontWeight="SemiBold"
+                                   TextWrapping="Wrap"
+                                   Margin="0,8,0,0" />
+
+                        <TextBlock x:Name="UninstallDevicesLabel"
+                                   Text="{DynamicResource Static.InternalInstall.Check.DeviceLabel}"
+                                   Classes="FieldLabelText"
+                                   Margin="0,14,0,6"
+                                   IsVisible="False" />
+                        <ComboBox x:Name="UninstallDevicesCombo"
+                                  SelectionChanged="OnUninstallDeviceSelected"
+                                  IsEnabled="False"
+                                  IsVisible="False" />
+
+                        <WrapPanel Margin="0,12,0,0">
+                            <Button x:Name="UninstallCheckButton"
+                                    Click="OnCheckUninstallDevice"
+                                    Theme="{StaticResource PrimaryButton}">
+                                <TextBlock x:Name="UninstallCheckButtonText" Text="{DynamicResource Static.InternalInstall.Check.Button}" />
+                            </Button>
+                        </WrapPanel>
+
+                        <!-- WPF 在卸载中隐藏 9008 入口的历史说明与原厂目录行，只保留「平板已在 9008」与高级检查。 -->
+                        <StackPanel x:Name="UninstallEntryPanel" Margin="0,14,0,0">
+                            <CheckBox x:Name="UninstallAlreadyEdlCheck"
+                                      Content="{DynamicResource Dynamic.BootMaintenance.AlreadyEdl}"
+                                      IsCheckedChanged="OnUninstallEdlRouteChanged" />
+
+                            <Expander Theme="{StaticResource SectionExpander}" IsExpanded="False" Margin="0,12,0,0">
+                                <Expander.Header>
+                                    <TextBlock Text="{DynamicResource Dynamic.Shared.AdvancedCheckHeader}"
+                                               Classes="BodyInkText"
+                                               FontSize="13"
+                                               FontWeight="SemiBold" />
+                                </Expander.Header>
+                                <StackPanel>
+                                    <TextBlock Text="{DynamicResource Dynamic.Shared.AdvancedCheckWarning}"
+                                               Classes="CaptionText"
+                                               TextWrapping="Wrap"
+                                               Margin="0,2,0,6" />
+                                    <Button x:Name="UninstallFastbootCheckButton"
+                                            Content="{DynamicResource Dynamic.Shared.AdvancedCheckButton}"
+                                            Click="OnCheckUninstallDeviceAdvanced"
+                                            Theme="{StaticResource SecondaryButton}"
+                                            IsEnabled="False"
+                                            HorizontalAlignment="Left" />
+                                </StackPanel>
+                            </Expander>
+                        </StackPanel>
+
+                        <TextBlock x:Name="UninstallCheckProgressText"
+                                   Classes="BodyInkText"
+                                   Margin="0,12,0,0"
+                                   Text="{DynamicResource Static.InternalInstall.Check.ProgressInitial}" />
+                        <TextBlock x:Name="UninstallCheckStatusText"
+                                   Classes="BodyText"
+                                   TextWrapping="Wrap"
+                                   Margin="0,4,0,0"
+                                   Text="{DynamicResource Static.InternalInstall.Check.StatusInitial}" />
+
+                        <Border Classes="CardBorder" Margin="0,16,0,0">
+                            <StackPanel>
+                                <TextBlock Text="{DynamicResource Static.InternalInstall.Check.FieldsTitle}" Classes="H2Text" />
+                                <Grid Margin="0,10,0,0" ColumnDefinitions="96,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto">
+                                    <TextBlock Grid.Row="0" Grid.Column="0" Text="{DynamicResource Static.FieldModel}" Classes="FieldLabelText" />
+                                    <TextBlock Grid.Row="0" Grid.Column="1" x:Name="UninstallModelText" Text="—" Classes="FieldValueText" />
+                                    <TextBlock Grid.Row="1" Grid.Column="0" Text="{DynamicResource Static.FieldSerial}" Classes="FieldLabelText" />
+                                    <TextBlock Grid.Row="1" Grid.Column="1" x:Name="UninstallSerialText" Text="—" Classes="FieldValueText" />
+                                    <TextBlock Grid.Row="2" Grid.Column="0" Text="{DynamicResource Static.FieldFirmware}" Classes="FieldLabelText" />
+                                    <TextBlock Grid.Row="2" Grid.Column="1" x:Name="UninstallFirmwareText" Text="—" Classes="FieldValueText" />
+                                    <TextBlock Grid.Row="3" Grid.Column="0" Text="{DynamicResource Static.FieldBootState}" Classes="FieldLabelText" />
+                                    <TextBlock Grid.Row="3" Grid.Column="1" x:Name="UninstallBootloaderText" Text="—" Classes="FieldValueText" />
+                                    <TextBlock Grid.Row="4" Grid.Column="0" Text="{DynamicResource Static.InternalInstall.Field.Route}" Classes="FieldLabelText" />
+                                    <TextBlock Grid.Row="4" Grid.Column="1" x:Name="UninstallRouteText" Text="—" Classes="FieldValueText" />
+                                    <TextBlock Grid.Row="5" Grid.Column="0" Text="{DynamicResource Static.InternalInstall.Field.Power}" Classes="FieldLabelText" />
+                                    <TextBlock Grid.Row="5" Grid.Column="1" x:Name="UninstallPowerText" Text="—" Classes="FieldValueText" />
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+
+                    <!-- 02 恢复资料与引导选项：电脑原厂备份可选（不选时用板内恢复资料）；「下一步」自动另存当前状态快照并真实准备。 -->
+                    <StackPanel x:Name="UninstallSourcesPage" IsVisible="False" Margin="0,18,0,0">
+                        <TextBlock Text="{DynamicResource Dynamic.UserdataUninstall.SourceTitle}" Classes="H1Text" />
+                        <TextBlock Text="{DynamicResource Dynamic.UserdataUninstall.SourceLead}"
+                                   Classes="BodyText"
+                                   TextWrapping="Wrap"
+                                   Margin="0,6,0,0" />
+
+                        <Border Classes="CardBorder" Margin="0,16,0,0">
+                            <StackPanel>
+                                <TextBlock Text="{DynamicResource Dynamic.UserdataUninstall.OriginalSource}"
+                                           Classes="FieldLabelText"
+                                           Margin="0,0,0,6" />
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <TextBox x:Name="UninstallOriginalBox"
+                                             Grid.Column="0"
+                                             Theme="{StaticResource InputTextBox}"
+                                             IsReadOnly="True" />
+                                    <Button x:Name="UninstallOriginalBrowseButton"
+                                            Grid.Column="1"
+                                            Content="{DynamicResource Static.Browse}"
+                                            Click="OnBrowseUninstallOriginal"
+                                            Theme="{StaticResource SecondaryButton}"
+                                            Margin="10,0,0,0" />
+                                </Grid>
+                                <TextBlock Text="{DynamicResource Dynamic.UserdataUninstall.FreshBackupHint}"
+                                           Classes="CaptionText"
+                                           TextWrapping="Wrap"
+                                           Margin="0,6,0,0" />
+
+                                <Button x:Name="UninstallUseBoardBackupButton"
+                                        Content="{DynamicResource Dynamic.UserdataUninstall.UseBoardBackup}"
+                                        Click="OnUseBoardUninstallBackup"
+                                        Theme="{StaticResource SecondaryButton}"
+                                        HorizontalAlignment="Left"
+                                        Margin="0,8,0,0" />
+                                <CheckBox x:Name="UninstallReclaimBackupCheck"
+                                          Content="{DynamicResource Dynamic.UserdataUninstall.ReclaimBackup}"
+                                          IsChecked="True"
+                                          IsCheckedChanged="OnUserdataUninstallReclaimBackupChanged"
+                                          Margin="0,10,0,0" />
+                                <CheckBox x:Name="UninstallRestoreStockCheck"
+                                          IsCheckedChanged="OnUserdataUninstallRestoreStockChanged"
+                                          Margin="0,10,0,0">
+                                    <TextBlock x:Name="UninstallRestoreStockText"
+                                               TextWrapping="Wrap"
+                                               FontSize="13"
+                                               Text="{DynamicResource Dynamic.UserdataUninstall.RestoreStock.Label}" />
+                                </CheckBox>
+                                <TextBlock x:Name="UninstallRestoreStockHint"
+                                           Classes="CaptionText"
+                                           TextWrapping="Wrap"
+                                           Margin="0,4,0,0"
+                                           IsVisible="False"
+                                           Text="{DynamicResource Dynamic.UserdataUninstall.RestoreStock.Hint}" />
+                            </StackPanel>
+                        </Border>
+
+                        <TextBlock x:Name="UninstallPrepareStatusText"
+                                   Classes="BodyText"
+                                   TextWrapping="Wrap"
+                                   Margin="0,12,0,0" />
+                    </StackPanel>
+
+                    <!-- 03 确认删除 Linux：只陈述 Core 真实准备的结果；执行按钮在本页底部。 -->
+                    <StackPanel x:Name="UninstallConfirmPage" IsVisible="False" Margin="0,18,0,0">
+                        <TextBlock Text="{DynamicResource Dynamic.UserdataUninstall.ConfirmTitle}" Classes="H1Text" />
+                        <TextBlock x:Name="UninstallDeviceText"
+                                   Classes="BodyText"
+                                   TextWrapping="Wrap"
+                                   Margin="0,8,0,0" />
+                        <TextBlock x:Name="UninstallCapacityText"
+                                   Classes="BodyText"
+                                   TextWrapping="Wrap"
+                                   Margin="0,6,0,0" />
+
+                        <StackPanel x:Name="UninstallSlotsPanel" Margin="0,12,0,0" />
+
+                        <Expander x:Name="UninstallRegionsPanel"
+                                  Theme="{StaticResource SectionExpander}"
+                                  Margin="0,12,0,0">
+                            <Expander.Header>
+                                <TextBlock Text="{DynamicResource Dynamic.BootMaintenance.RegionsTitle}" Classes="BodyInkText" FontWeight="SemiBold" />
+                            </Expander.Header>
+                            <StackPanel x:Name="UninstallRegionsHost" />
+                        </Expander>
+
+                        <!-- 确认页上的恢复原厂引导复选框（与来源页共用同一状态）。 -->
+                        <CheckBox x:Name="UninstallConfirmRestoreStockCheck"
+                                  IsCheckedChanged="OnUserdataUninstallRestoreStockChanged"
+                                  Margin="0,14,0,0">
+                            <TextBlock x:Name="UninstallConfirmRestoreStockText"
+                                       TextWrapping="Wrap"
+                                       FontSize="13"
+                                       Text="{DynamicResource Dynamic.UserdataUninstall.RestoreStock.Label}" />
+                        </CheckBox>
+                        <TextBlock x:Name="UninstallConfirmRestoreStockHint"
+                                   Classes="CaptionText"
+                                   TextWrapping="Wrap"
+                                   Margin="0,4,0,0"
+                                   IsVisible="False"
+                                   Text="{DynamicResource Dynamic.UserdataUninstall.RestoreStock.Hint}" />
+
+                        <CheckBox x:Name="UninstallRiskCheck"
+                                  IsCheckedChanged="OnUninstallRiskChanged"
+                                  Margin="0,14,0,0">
+                            <TextBlock x:Name="UninstallRiskText"
+                                       TextWrapping="Wrap"
+                                       FontSize="13"
+                                       Text="{DynamicResource Dynamic.UserdataUninstall.Risk.Confirm}" />
+                        </CheckBox>
+
+                        <TextBlock x:Name="UninstallConfirmStatusText"
+                                   Classes="BodyText"
+                                   TextWrapping="Wrap"
+                                   Margin="0,12,0,0" />
+                        <TextBlock x:Name="UninstallProgressText"
+                                   Classes="CaptionText"
+                                   TextWrapping="Wrap"
+                                   Margin="0,6,0,0" />
+                        <ProgressBar x:Name="UninstallProgressBar"
+                                     Height="4"
+                                     Minimum="0"
+                                     Maximum="100"
+                                     Value="0"
+                                     Margin="0,8,0,0" />
+                    </StackPanel>
+
+                    <!-- 本页的上一步 / 下一步 / 执行（WPF 窗口用共享底栏）。 -->
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,18,0,0">
+                        <Button x:Name="UninstallPrevButton"
+                                Content="{DynamicResource Static.Previous}"
+                                Click="OnUninstallPrevious"
+                                IsEnabled="False"
+                                Theme="{StaticResource SecondaryButton}" />
+                        <Button x:Name="UninstallNextButton"
+                                Content="{DynamicResource Static.Next}"
+                                Click="OnUninstallNext"
+                                IsEnabled="False"
+                                Theme="{StaticResource PrimaryButton}"
+                                Margin="10,0,0,0" />
+                        <Button x:Name="UninstallActionButton"
+                                Content="{DynamicResource Dynamic.UserdataUninstall.Execute}"
+                                Click="OnExecuteUninstall"
+                                IsEnabled="False"
+                                IsVisible="False"
+                                Theme="{StaticResource PrimaryButton}"
+                                Margin="10,0,0,0" />
+                    </StackPanel>
+
+                    <!-- 仍有真实 9008 现场且未真实完成时显示：一次复位离开。 -->
+                    <Border x:Name="UninstallExitPanel"
+                            Classes="CardBorder"
+                            Margin="0,16,0,0"
+                            IsVisible="False">
+                        <StackPanel>
+                            <TextBlock Text="{DynamicResource Dynamic.InternalInstall.Exit.Title}" Classes="H2Text" />
+                            <Button x:Name="UninstallExitButton"
+                                    Content="{DynamicResource Dynamic.UserdataUninstall.Exit.Button}"
+                                    Click="OnExitUninstall"
+                                    Theme="{StaticResource SecondaryButton}"
+                                    HorizontalAlignment="Left"
+                                    Margin="0,10,0,0" />
+                            <TextBlock x:Name="UninstallExitStatusText"
+                                       Classes="BodyText"
+                                       TextWrapping="Wrap"
+                                       Margin="0,8,0,0"
+                                       Text="{DynamicResource Dynamic.UserdataUninstall.Exit.Ready}" />
+                        </StackPanel>
+                    </Border>
+
+                    <!-- 三步共用的日志 -->
+                    <Border Classes="CardBorder" Margin="0,16,0,0">
+                        <Expander Theme="{StaticResource SectionExpander}" Margin="0" IsExpanded="False">
+                            <Expander.Header>
+                                <TextBlock Text="{DynamicResource Dynamic.InternalInstall.Log.Title}" Classes="H2Text" />
+                            </Expander.Header>
+                            <ScrollViewer x:Name="UninstallLogScrollViewer"
+                                          Height="160"
+                                          Margin="0,10,0,0"
+                                          VerticalScrollBarVisibility="Auto"
+                                          HorizontalScrollBarVisibility="Disabled">
+                                <StackPanel>
+                                    <TextBlock x:Name="UninstallLogEmptyText"
+                                               Text="{DynamicResource Dynamic.InternalInstall.Log.Empty}"
+                                               Classes="CaptionText" />
+                                    <StackPanel x:Name="UninstallLogList" />
                                 </StackPanel>
                             </ScrollViewer>
                         </Expander>

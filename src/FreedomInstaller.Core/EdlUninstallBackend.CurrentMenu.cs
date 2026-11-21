@@ -444,6 +444,14 @@ public sealed partial class EdlUninstallBackend
                     companion.Role + "'.");
             }
 
+            // The AOSP-preserving boot-only route keeps every original AVB metadata partition untouched.
+            if (string.Equals(slotFact.BootTrustMode, nameof(BootMaintenanceBootTrust.AospPreserved), StringComparison.Ordinal))
+            {
+                throw new InvalidOperationException(
+                    "An AOSP-preserving boot-only project slot cannot have metadata companions: '" +
+                    companion.Role + "'.");
+            }
+
             EdlCapturedRegion region = RequireRegion(currentBackup, companion.Role);
 
             if (companion.Original.Length != region.Length ||

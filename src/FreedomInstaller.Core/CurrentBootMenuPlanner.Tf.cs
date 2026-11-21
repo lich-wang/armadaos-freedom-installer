@@ -566,10 +566,17 @@ public static partial class CurrentBootMenuPlanner
                 }
                 else
                 {
-                    var envelope = await EdlRawBootBuilder.RepackEnvelopeAsync(
-                        sourceBoot, payload.PackedRaw, rawBounds[source], candidatePath, ct).ConfigureAwait(false);
+                    // A source that already carries the project kShim composite takes the guarded hybrid entry, as the
+                    // build core selects it; every other source keeps the strict footer equality.
+                    var envelope = payload.Material.IsKshim
+                        ? await EdlRawBootBuilder.RepackKshimHybridEnvelopeAsync(
+                            sourceBoot, payload.PackedRaw, rawBounds[source], candidatePath, ct).ConfigureAwait(false)
+                        : await EdlRawBootBuilder.RepackEnvelopeAsync(
+                            sourceBoot, payload.PackedRaw, rawBounds[source], candidatePath, ct).ConfigureAwait(false);
                     candidate = envelope.CandidateBoot;
-                    trust = BootMaintenanceBootTrust.AospResigned;
+                    trust = authority.UsesPreservedAospChain
+                        ? BootMaintenanceBootTrust.AospPreserved
+                        : BootMaintenanceBootTrust.AospResigned;
                     metadataSha256 = envelope.SourceEmbeddedVbmetaSha256;
                     payloadDigestMatchesOem = false;
                 }

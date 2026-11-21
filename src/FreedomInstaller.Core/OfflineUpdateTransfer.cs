@@ -412,8 +412,8 @@ public sealed class OfflineUpdateTransfer
         if (!root.TryGetProperty("supportedModels", out var models) || models.ValueKind != JsonValueKind.Array ||
             !models.EnumerateArray().Any(x => x.ValueKind == JsonValueKind.String && x.GetString() == package.DeviceModel))
             throw new InvalidDataException("描述文件不支持目标设备型号。");
-        if (package.DeviceModel is not ("TB322FC" or "TB323FU"))
-            throw new InvalidDataException("当前原生适配器仅支持 TB322FC/TB323FU 设备。");
+        if (!UpdatePackageDescriptor.SupportsOfflineUpgrade(package.DeviceModel))
+            throw new InvalidDataException("当前原生适配器不支持该设备型号的离线升级。");
         var minimum = ParseVersion(RequiredString(root, "minimumUpdaterVersion", "descriptor"));
         if (!root.TryGetProperty("files", out var files) || files.ValueKind != JsonValueKind.Array)
             throw new InvalidDataException("描述文件仅支持 files 数组。");

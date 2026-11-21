@@ -51,35 +51,55 @@ internal sealed partial class InternalInstallPreparationContext
         EdlDeviceProfiles.FindByModel(model)?.InstallBootTrust == EdlInstallBootTrust.AospPreservedBoot;
 
     /// <summary>
-    /// The early gate of the AOSP-preserving route: every source slot's original root vbmeta must be signed by
-    /// the pinned AOSP key and chain boot to that same key. Nothing else is required of the other chains,
-    /// because this route never rewrites them. Returns the authenticated vbmeta roles, which every original
-    /// device capture then reads again, so the live roots must still be the authenticated backup bytes.
+    /// The early gate of the AOSP-preserving route: the original root vbmeta of every slot this route writes boot to,
+    /// and of every slot it takes boot material from, must be signed by the pinned AOSP key and chain boot to that same
+    /// key. Nothing else is required of the other chains, because this route never rewrites them. Returns the
+    /// authenticated vbmeta roles, which every original device capture then reads again, so the live roots must still
+    /// be the authenticated backup bytes.
     /// </summary>
-    private static async Task<IReadOnlyList<string>> RequireDirectPreservedAospChainAsync(
+    private static Task<IReadOnlyList<string>> RequireDirectPreservedAospChainAsync(
         IReadOnlyDictionary<string, string> sourceSlots,
         BackupFacts backup,
+        CancellationToken ct) =>
+        RequirePreservedAospChainAsync(sourceSlots, backup.Files, ct);
+
+    /// <summary>
+    /// The slots whose root vbmeta the boot-only route authenticates: every target (its candidate boot is verified
+    /// against that slot's own unchanged vbmeta) and every source, in order. A target sourced from the other slot
+    /// (b from a) therefore still has its own root checked.
+    /// </summary>
+    internal static IReadOnlyList<string> PreservedAospRootSlots(IReadOnlyDictionary<string, string> sourceSlots)
+    {
+        var slots = new SortedSet<string>(sourceSlots.Keys, StringComparer.Ordinal);
+        slots.UnionWith(sourceSlots.Values);
+        return new List<string>(slots).AsReadOnly();
+    }
+
+    /// <summary>The gate over explicit capture files; see <see cref="RequireDirectPreservedAospChainAsync"/>.</summary>
+    internal static async Task<IReadOnlyList<string>> RequirePreservedAospChainAsync(
+        IReadOnlyDictionary<string, string> sourceSlots,
+        IReadOnlyDictionary<string, EdlCapturedRegion> files,
         CancellationToken ct)
     {
-        var sources = new SortedSet<string>(sourceSlots.Values, StringComparer.Ordinal);
-        var roles = new List<string>(sources.Count);
-        foreach (string source in sources)
+        IReadOnlyList<string> slots = PreservedAospRootSlots(sourceSlots);
+        var roles = new List<string>(slots.Count);
+        foreach (string slot in slots)
         {
             ct.ThrowIfCancellationRequested();
 
             EdlRawOriginalBootChainFacts facts = await EdlRawBootBuilder
-                .AuthenticatePreservedBootChainAsync(Claim(backup.Files, "vbmeta_" + source), ct)
+                .AuthenticatePreservedBootChainAsync(Claim(files, "vbmeta_" + slot), ct)
                 .ConfigureAwait(false);
 
             if (!SameSha(facts.PublicKeySha256, EdlRawBootBuilder.SigningPublicKeySha256)
                 || !SameSha(facts.BootChainPublicKeySha256, EdlRawBootBuilder.SigningPublicKeySha256))
             {
                 throw new InvalidOperationException(
-                    "requires-compatible-bootloader: the original vbmeta_" + source + " root or its boot chain is "
+                    "requires-compatible-bootloader: the original vbmeta_" + slot + " root or its boot chain is "
                     + "not the AOSP signing key, so a boot-only install would not verify.");
             }
 
-            roles.Add("vbmeta_" + source);
+            roles.Add("vbmeta_" + slot);
         }
 
         return roles.AsReadOnly();

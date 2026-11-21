@@ -721,10 +721,13 @@ public static class UninstallWorkflow
             return "The device identity has no serial number.";
         }
 
+        // TB710FU's uninstall rewrites only the LUN0 GPT, misc and the kShim boot, like the Y700; its route is
+        // opened (and can be held back again) by DeviceModelRoutes, which the backend checks before any write.
         if (!string.Equals(identity.Model, "TB322FC", StringComparison.Ordinal)
-            && !string.Equals(identity.Model, "TB323FU", StringComparison.Ordinal))
+            && !string.Equals(identity.Model, "TB323FU", StringComparison.Ordinal)
+            && !string.Equals(identity.Model, DeviceModelRoutes.Tb710fuModel, StringComparison.Ordinal))
         {
-            return "The device model is not a supported TB322FC or TB323FU unit.";
+            return "The device model is not a supported TB322FC, TB323FU or TB710FU unit.";
         }
 
         if (!Enum.IsDefined(typeof(BootloaderState), identity.BootloaderState))

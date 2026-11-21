@@ -1369,7 +1369,7 @@
   "Dynamic.OfflineUpdate.ErrorRecoveryMissing": "Verified local recovery data is missing; cannot execute upgrade.",
   "Dynamic.OfflineUpdate.StateStoppedWaiting": "Stopped local waiting. The background device job may still continue; click Refresh later to query status.",
   "Dynamic.OfflineUpdate.Phase.Uploading": "Uploading package",
-  "Dynamic.OfflineUpdate.ErrorUnsupportedModel": "Model {0} is not supported by the current native offline upgrade adapter (only TB322FC and TB323FU are supported).",
+  "Dynamic.OfflineUpdate.ErrorUnsupportedModel": "Model {0} is not supported by the current native offline upgrade adapter.",
   "Dynamic.OfflineUpdate.Phase.AwaitingRecoveryExport": "Awaiting recovery export",
   "Dynamic.OfflineUpdate.PairingFingerprints": "Host fingerprint: {0}\nClient fingerprint: {1}",
   "Dynamic.OfflineUpdate.PairingNeeded": "First-time authorization is required. Follow the connection instructions.",

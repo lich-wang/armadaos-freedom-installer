@@ -31,8 +31,8 @@ MAC_CODE = [MAC / "MainWindow.BootMaintenance.cs"]
 MAC_PAGE = "BootMaintenancePage"
 
 # Intentional differences, each with its reason:
-# - Uninstall-only controls in the shared WPF pages (restore-stock check boxes and hints): uninstall is not ported
-#   (it needs a Python runtime the Mac bundle lacks), so the Mac page does not show them.
+# - Uninstall-only controls in the shared WPF pages (restore-stock check boxes and hints): uninstall has its own Mac
+#   page (UninstallPage, checked by test_mac_uninstall_parity.py), so the maintenance page does not show them.
 # - The package browse button: WPF shows it only in the "repair-install" mode, which has no home card (on either
 #   window's home page reachable on Mac); in "repair" WPF hides it and the path is pasted, so the Mac page omits it
 #   and its handler (OnBrowseBootMaintenancePackage returns at once outside repair-install).
@@ -46,7 +46,7 @@ _WPF_ONLY_NAMES = {
     "BootMaintenancePackageBrowseButton",
 }
 _WPF_ONLY_HANDLERS = {"OnBrowseBootMaintenancePackage"}
-# - The WPF shared pages carry the uninstall restore-stock labels too.
+# - The WPF shared pages carry the uninstall restore-stock labels too (shown on the Mac uninstall page).
 _WPF_ONLY_KEYS = {"Dynamic.UserdataUninstall.RestoreStock.Label", "Dynamic.UserdataUninstall.RestoreStock.Hint"}
 # - Messages of the repair-install mode ("修复安装"; it reads the on-board recovery backup) only: that mode has no
 #   card on the Mac home page.

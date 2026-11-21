@@ -15,6 +15,12 @@ public enum BootMaintenanceBootTrust
 
     /// <summary>Project boot candidates keep the original OEM-signed AVB metadata and rely on the verified GBL runtime.</summary>
     GblPreserveOem,
+
+    /// <summary>
+    /// Only the project boot candidates are re-signed with the fixed AOSP key; every original AVB metadata partition
+    /// stays untouched because the original root vbmeta already chains boot to that key (the TB710FU route).
+    /// </summary>
+    AospPreserved,
 }
 
 /// <summary>What one slot's boot image is taken from.</summary>

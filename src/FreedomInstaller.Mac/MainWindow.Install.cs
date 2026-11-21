@@ -125,9 +125,12 @@ public partial class MainWindow
         (_internalInstallClient is not null && !_internalInstallExitVerified)
         || (_internalInstallClient is null && _internalInstallEntryAttempted);
 
-    /// <summary>The tablet is (or may be) in 9008 for this window, from the install wizard or the global page.</summary>
+    /// <summary>The tablet is (or may be) in 9008 for this window, from the install wizard or another device page.</summary>
     private bool HasLiveDeviceSession =>
-        HasInternalInstallDeviceSession || HasGlobalRecoveryProtectedState || HasBootMaintenanceDeviceSession;
+        HasInternalInstallDeviceSession
+        || HasGlobalRecoveryProtectedState
+        || HasBootMaintenanceDeviceSession
+        || HasUninstallDeviceSession;
 
     /// <summary>An entry to 9008 was attempted but produced no client, so neither a reset nor a verified return is possible here.</summary>
     private bool HasUnconfirmedEdlEntry => _internalInstallClient is null && _internalInstallEntryAttempted;
@@ -274,6 +277,7 @@ public partial class MainWindow
         RefreshGlobalRecoveryActions();
         RefreshOfflineUpgradeActions();
         RefreshBootMaintenanceActions();
+        RefreshUninstallActions();
     }
 
     private async Task RunBusyAsync(Func<CancellationToken, Task> work)
