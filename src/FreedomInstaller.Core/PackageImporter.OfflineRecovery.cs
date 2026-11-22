@@ -32,12 +32,6 @@ public static partial class PackageImporter
     private const string RecoveryManifestFileName = "recovery-manifest.json";
     private const string RecoveryAckFileName = "recovery-ack.json";
 
-    private static readonly HashSet<string> SupportedRecoveryModels = new(StringComparer.Ordinal)
-    {
-        "TB322FC",
-        "TB323FU"
-    };
-
     private static readonly HashSet<string> ReservedRecoveryNames = new(StringComparer.OrdinalIgnoreCase)
     {
         RecoveryPlanFileName,
@@ -613,7 +607,10 @@ public static partial class PackageImporter
         }
 
         var normalized = deviceModel.Trim();
-        if (!SupportedRecoveryModels.Contains(normalized))
+        // The same single offline-upgrade model list as the descriptor gate and the transfer adapter, in its exact
+        // canonical (upper-case) spelling.
+        if (!string.Equals(normalized, normalized.ToUpperInvariant(), StringComparison.Ordinal)
+            || !UpdatePackageDescriptor.SupportsOfflineUpgrade(normalized))
         {
             throw new InvalidDataException($"不支持的离线恢复设备型号：{normalized}。");
         }

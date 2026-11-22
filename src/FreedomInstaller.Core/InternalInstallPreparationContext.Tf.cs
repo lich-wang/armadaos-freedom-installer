@@ -273,6 +273,7 @@ internal sealed partial class InternalInstallPreparationContext
         private readonly IReadOnlyDictionary<string, EdlRawInactiveSlotBackup> _inactiveTargets;
         private readonly IReadOnlyList<DirectAvbMetadataNode> _avbNodes;
         private readonly GblPreparationInputs? _gblInputs;
+        private readonly IReadOnlyList<string>? _preservedAvbRoles;
         private readonly string? _commonLoaderEvidence;
         private readonly CurrentBootInitializedInactiveProof? _initializedInactiveProof;
         private readonly CurrentBootAfterEpochWitness? _afterEpochWitness;
@@ -296,7 +297,8 @@ internal sealed partial class InternalInstallPreparationContext
             CurrentBootInitializedInactiveProof? initializedInactiveProof,
             string ownChild,
             List<HeldClaim> claims,
-            CurrentBootAfterEpochWitness? afterEpochWitness = null)
+            CurrentBootAfterEpochWitness? afterEpochWitness = null,
+            IReadOnlyList<string>? preservedAvbRoles = null)
         {
             _directoryPath = directoryPath;
             _model = model;
@@ -309,6 +311,7 @@ internal sealed partial class InternalInstallPreparationContext
             _inactiveTargets = inactiveTargets;
             _avbNodes = avbNodes;
             _gblInputs = gblInputs;
+            _preservedAvbRoles = preservedAvbRoles;
             _commonLoaderEvidence = commonLoaderEvidence;
             _initializedInactiveProof = initializedInactiveProof;
             _afterEpochWitness = afterEpochWitness;
@@ -419,21 +422,46 @@ internal sealed partial class InternalInstallPreparationContext
                 // RSA chain, the actual ABL EfispLoad detector, the vendor PRC/ROW consensus, the exact embedded
                 // EFI asset and the real captured EFI target. A null result is the AOSP path and keeps its exact
                 // signed-root and metadata preparation below. No guessed allowlist and no unconditional fallback.
+                // A model whose profile declares the AOSP-preserving boot-only route (TB710FU) takes the same
+                // early gate as its internal install: the original root vbmeta and its boot chain must be the AOSP
+                // key, nothing else is rewritten, so neither the ABL recovery, the GBL gate nor the AOSP re-signed
+                // roots apply. Its locked chain has an RSA2048 vbmeta_system that this route must never touch.
+                IReadOnlyList<string>? preservedAvbRoles = null;
+                if (UsesPreservedAospChain(facts.Model))
+                {
+                    if (ablRecovery is not null)
+                    {
+                        throw new InvalidOperationException(
+                            "requires-compatible-bootloader: the AOSP-preserving boot-only route of " + facts.Model
+                            + " has no ABL recovery; nothing outside boot is rewritten.");
+                    }
+
+                    preservedAvbRoles = await RequireDirectPreservedAospChainAsync(sourceSlots, facts, ct)
+                        .ConfigureAwait(false);
+                }
+
                 ablRecovery?.RequireBinding(backup, lockState, sourceSlots);
                 if (ablRecovery is not null) await ablRecovery.RevalidateAsync(ct).ConfigureAwait(false);
-                GblPreparationInputs? gblInputs = ablRecovery is not null ? null : await PrepareDirectGblInputsAsync(
-                    currentSlot,
-                    lockState,
-                    sourceSlots,
-                    facts,
-                    ownChild,
-                    claims,
-                    ct).ConfigureAwait(false);
+                GblPreparationInputs? gblInputs = ablRecovery is not null || preservedAvbRoles is not null
+                    ? null
+                    : await PrepareDirectGblInputsAsync(
+                        currentSlot,
+                        lockState,
+                        sourceSlots,
+                        facts,
+                        ownChild,
+                        claims,
+                        ct).ConfigureAwait(false);
 
                 IReadOnlyList<DirectAvbMetadataNode> avbNodes;
                 string? commonLoaderEvidence = null;
 
-                if (gblInputs is null)
+                if (preservedAvbRoles is not null)
+                {
+                    // Boot-only: the original AVB metadata stays untouched, so no metadata candidate exists.
+                    avbNodes = Array.Empty<DirectAvbMetadataNode>();
+                }
+                else if (gblInputs is null)
                 {
                     // AOSP mode: the same facts, claims and eligibility produce the signed vbmeta roots and the
                     // three metadata nodes per self-sourced target, preserving original locked/unlocked
@@ -485,7 +513,8 @@ internal sealed partial class InternalInstallPreparationContext
                     initializedInactiveProof: initializedInactiveProof,
                     ownChild: ownChild,
                     claims: claims,
-                    afterEpochWitness: afterEpochWitness);
+                    afterEpochWitness: afterEpochWitness,
+                    preservedAvbRoles: preservedAvbRoles);
 
                 return authority;
             }
@@ -742,8 +771,21 @@ internal sealed partial class InternalInstallPreparationContext
             CurrentBootInitializedInactiveProof? initializedInactiveProof,
             string ownChild,
             List<HeldClaim> claims,
-            CurrentBootAfterEpochWitness? afterEpochWitness = null)
+            CurrentBootAfterEpochWitness? afterEpochWitness = null,
+            IReadOnlyList<string>? preservedAvbRoles = null)
         {
+            if (gblInputs is not null && preservedAvbRoles is not null)
+            {
+                throw new InvalidOperationException(
+                    "tf-boot-authority-mode-conflict: the GBL and the AOSP-preserving boot-only routes are exclusive.");
+            }
+
+            if (preservedAvbRoles is not null && avbNodes.Count != 0)
+            {
+                throw new InvalidOperationException(
+                    "tf-boot-authority-mode-conflict: the AOSP-preserving boot-only route carries no AVB metadata node.");
+            }
+
             return new TfBootAuthority(
                 facts.Directory,
                 facts.Model,
@@ -763,7 +805,10 @@ internal sealed partial class InternalInstallPreparationContext
                 initializedInactiveProof,
                 ownChild,
                 claims,
-                afterEpochWitness: afterEpochWitness);
+                afterEpochWitness: afterEpochWitness,
+                preservedAvbRoles: preservedAvbRoles is null
+                    ? null
+                    : new ReadOnlyCollection<string>(new List<string>(preservedAvbRoles)));
         }
 
         /// <summary>The normalized backup directory the authority was captured from.</summary>
@@ -798,6 +843,16 @@ internal sealed partial class InternalInstallPreparationContext
 
         /// <summary>Whether the existing GBL gate proved this source a real GBL source.</summary>
         internal bool UsesGbl => _gblInputs is not null;
+
+        /// <summary>
+        /// Whether this is the AOSP-preserving boot-only route of a model whose profile declares it (TB710FU): the
+        /// original root vbmeta and its boot chain were authenticated as the AOSP key, only the boot candidates are
+        /// re-signed, and no AVB metadata node exists. Exclusive with <see cref="UsesGbl"/>.
+        /// </summary>
+        internal bool UsesPreservedAospChain => _preservedAvbRoles is not null;
+
+        /// <summary>The authenticated original root vbmeta roles of the boot-only route, otherwise empty.</summary>
+        internal IReadOnlyList<string> PreservedAvbRoles => _preservedAvbRoles ?? Array.Empty<string>();
 
         /// <summary>The real captured EFI target region in GBL mode, otherwise null.</summary>
         internal EdlCapturedRegion? EfispTarget => _gblInputs?.EfispTarget;

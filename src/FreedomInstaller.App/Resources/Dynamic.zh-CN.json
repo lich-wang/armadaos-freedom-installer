@@ -1372,7 +1372,7 @@
   "Dynamic.OfflineUpdate.ErrorRecoveryMissing": "未找到已验证的本机恢复资料，无法开始升级。",
   "Dynamic.OfflineUpdate.StateStoppedWaiting": "已停止本地等待；平板后台任务可能仍在继续运行，可稍后点击“刷新”查询状态。",
   "Dynamic.OfflineUpdate.Phase.Uploading": "正在上传升级包",
-  "Dynamic.OfflineUpdate.ErrorUnsupportedModel": "当前离线升级适配器暂不支持机型 {0}（仅支持 TB322FC 与 TB323FU）。",
+  "Dynamic.OfflineUpdate.ErrorUnsupportedModel": "当前离线升级适配器暂不支持机型 {0}。",
   "Dynamic.OfflineUpdate.Phase.AwaitingRecoveryExport": "等待导出恢复资料",
   "Dynamic.OfflineUpdate.PairingFingerprints": "主机指纹：{0}\n客户端指纹：{1}",
   "Dynamic.OfflineUpdate.PairingNeeded": "平板需要首次授权。请按连接区的步骤完成。",

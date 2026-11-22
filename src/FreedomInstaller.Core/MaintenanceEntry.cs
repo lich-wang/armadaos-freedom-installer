@@ -417,7 +417,7 @@ public sealed class MaintenanceEntry
     }
 
     // Only gates the read-only SoC serial read; TB710FU joins for its read-only checks, while temporary boot
-    // stays exactly TB322FC and every TB710FU write route is held back by DeviceModelRoutes.
+    // stays exactly TB322FC and every write route is gated separately by DeviceModelRoutes.
     private static bool IsSupportedAndroidModel(string? model)
         => string.Equals(model, MaintenanceProfiles.Model, StringComparison.OrdinalIgnoreCase)
             || string.Equals(model, "TB323FU", StringComparison.OrdinalIgnoreCase)

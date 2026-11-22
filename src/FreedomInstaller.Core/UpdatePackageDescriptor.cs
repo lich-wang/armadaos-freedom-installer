@@ -18,11 +18,22 @@ public sealed partial class UpdatePackageDescriptor
         "TB710FU",
     };
 
+    // Models whose installed systems have the native dual-slot backend the offline upgrade drives. It follows
+    // Freedom's capability table (system_files/usr/lib/armada/updates/models.py, OFFLINE_UPGRADE_MODELS): TB710FU
+    // joined it with the native kShim UFS settings and the mirrored boot_a/boot_b updater.
     private static readonly HashSet<string> OfflineUpgradeModelsSet = new(StringComparer.Ordinal)
     {
         "TB322FC",
         "TB323FU",
+        "TB710FU",
     };
+
+    /// <summary>
+    /// True when <paramref name="model"/> (canonical, case-insensitive) may take an offline upgrade. The single
+    /// list the descriptor gate, the transfer adapter and both installer windows use.
+    /// </summary>
+    public static bool SupportsOfflineUpgrade(string? model) =>
+        !string.IsNullOrEmpty(model) && OfflineUpgradeModelsSet.Contains(model.ToUpperInvariant());
 
     private static readonly HashSet<string> OperationsSet = new(StringComparer.Ordinal)
     {

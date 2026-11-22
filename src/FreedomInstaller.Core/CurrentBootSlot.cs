@@ -9,8 +9,9 @@ namespace FreedomInstaller.Core;
 
 /// <summary>
 /// Read-only active-slot facts resolved from one verified internal backup. The current slot is the AOSP
-/// misc boot-control active slot when the control block is present; on a Qualcomm Y700 whose control block
-/// is entirely zero it is resolved from the verified primary/backup GPT pair's slot flags. Facts carry no
+/// misc boot-control active slot when the control block is present; on a Qualcomm model (both Y700 and the
+/// TB710FU) whose control block is entirely zero it is resolved from the verified primary/backup GPT pair's
+/// slot flags. Facts carry no
 /// device-write authority. The virtual A/B source_slot, historical metadata and other partition flags are
 /// never used.
 /// </summary>
@@ -25,7 +26,7 @@ public sealed record CurrentBootSlotFacts(
 /// Read-only resolver for the active boot slot of one verified internal backup. Reads the captured misc
 /// region with FileShare.Read, verifies its whole-file length and SHA-256, then reads the 32-byte AOSP
 /// boot_control block at offset 2048. Delegates non-zero blocks to <see cref="BootSlotControl"/> unchanged.
-/// For an all-zero block only, accepts the exact Qualcomm Y700 models and resolves the slot from the
+/// For an all-zero block only, accepts the exact Qualcomm models and resolves the slot from the
 /// verified GPT pair of the boot_a/boot_b LUN using its slot attribute flags. Never mutates a file or
 /// issues any device command.
 /// </summary>
@@ -36,8 +37,12 @@ public static class CurrentBootSlot
     private const int MinimumMiscLength = 2080;
     private const long CaptureSectors = 64;
 
-    private const string ModelA = "TB322FC";
-    private const string ModelB = "TB323FU";
+    /// <summary>
+    /// Models whose bootloader keeps the A/B state in the GPT slot attributes and leaves the AOSP misc block zero:
+    /// both Y700 generations and the TB710FU (SM8650), whose live misc block is all zero with boot_a/boot_b carrying
+    /// the same Qualcomm active/priority/retry/successful/unbootable bits.
+    /// </summary>
+    private static readonly string[] QualcommGptSlotModels = { "TB322FC", "TB323FU", DeviceModelRoutes.Tb710fuModel };
 
     private const ulong PriorityMask = 0x3UL;
     private const ulong ActiveBit = 1UL << 50;
@@ -80,13 +85,11 @@ public static class CurrentBootSlot
     private static async Task<CurrentBootSlotFacts> ResolveFromGptAsync(
         InternalBackupSet backup, string controlSha, CancellationToken token)
     {
-        if (string.IsNullOrEmpty(backup.Model)
-            || (!string.Equals(backup.Model, ModelA, StringComparison.Ordinal)
-                && !string.Equals(backup.Model, ModelB, StringComparison.Ordinal)))
+        if (!UsesQualcommGptSlot(backup.Model))
         {
             throw new InvalidDataException(
                 "boot-slot-control-invalid: the misc control block is all zero and model '" + (backup.Model ?? "")
-                + "' is not an accepted Qualcomm Y700 model; the GPT active slot cannot be authorized.");
+                + "' is not an accepted Qualcomm model; the GPT active slot cannot be authorized.");
         }
 
         int lun = FindBootLun(backup);
@@ -149,6 +152,21 @@ public static class CurrentBootSlot
                 "boot-slot-control-invalid: the verified LUN " + lunText + " GPT pair does not match the captured table.");
         }
 
+        string slot = ResolveActiveSlot(parsed);
+        string authority = BuildAuthority(lun, primary.Sha256, backupGpt.Sha256, controlSha);
+        return new CurrentBootSlotFacts(slot, authority, Source: "qualcomm-gpt");
+    }
+
+    /// <summary>True for an exact (case-sensitive) model whose all-zero misc block defers to the GPT slot flags.</summary>
+    internal static bool UsesQualcommGptSlot(string? model) =>
+        model is not null && Array.IndexOf(QualcommGptSlotModels, model) >= 0;
+
+    /// <summary>
+    /// The sole raw-active, eligible slot of a verified GPT table: exactly one of boot_a/boot_b carries the active
+    /// bit, and that slot has priority &gt; 0, is not unbootable, and is successful or has retries left.
+    /// </summary>
+    internal static string ResolveActiveSlot(GptTable parsed)
+    {
         GptPartition bootA = FindSingle(parsed, "boot_a");
         GptPartition bootB = FindSingle(parsed, "boot_b");
 
@@ -173,8 +191,7 @@ public static class CurrentBootSlot
                 + " is not eligible (priority > 0, not unbootable, successful or retries > 0 required).");
         }
 
-        string authority = BuildAuthority(lun, primary.Sha256, backupGpt.Sha256, controlSha);
-        return new CurrentBootSlotFacts(activeA ? "a" : "b", authority, Source: "qualcomm-gpt");
+        return activeA ? "a" : "b";
     }
 
     private static string BuildAuthority(int lun, string primarySha, string backupSha, string controlSha)

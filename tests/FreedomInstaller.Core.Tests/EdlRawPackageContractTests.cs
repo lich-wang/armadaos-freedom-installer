@@ -131,8 +131,10 @@ public sealed class EdlRawPackageContractTests
     }
 
     [Fact]
-    public void ReadEdlRawContract_AcceptsUnmarkedRuntimeOutsideMirrorPolicy()
+    public void ReadEdlRawContract_RejectsUnmarkedTb710fuRuntime()
     {
+        // TB710FU joined the mirrored policy with its native boot_a/boot_b updater: a TB710FU runtime built
+        // before that carries no marker and is refused, like the Y700 ones.
         using var fixture = EdlRawFixture.Create();
         var metadata = fixture.ReadMetadata();
         metadata["deviceModel"] = "TB710FU";
@@ -141,6 +143,23 @@ public sealed class EdlRawPackageContractTests
         compatible["device"] = "tb710fu";
         fixture.WriteMetadata(metadata);
         fixture.ClearRuntimeMarker();
+
+        var exception = Assert.Throws<InvalidDataException>(
+            () => PackageReader.ReadEdlRawContract(fixture.Path, "TB710FU"));
+
+        Assert.Contains(LinuxRuntimeContract.MirrorMarkerText, exception.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ReadEdlRawContract_AcceptsMarkedTb710fuRuntime()
+    {
+        using var fixture = EdlRawFixture.Create();
+        var metadata = fixture.ReadMetadata();
+        metadata["deviceModel"] = "TB710FU";
+        var compatible = metadata["compatible"]!.AsObject();
+        compatible["soc"] = "SM8650";
+        compatible["device"] = "tb710fu";
+        fixture.WriteMetadata(metadata);
 
         var contract = PackageReader.ReadEdlRawContract(fixture.Path, "TB710FU");
 

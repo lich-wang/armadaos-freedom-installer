@@ -342,7 +342,7 @@ public sealed partial class BootMaintenanceBackend : IDisposable
 
             // The freshly verified capture was just re-read from the device and hashed back to the
             // held copy. CurrentBootSlot verifies the misc control block and can resolve an all-zero
-            // control on a Qualcomm Y700 from the GPT slot flags.
+            // control on a Qualcomm model from the GPT slot flags.
             CurrentBootSlotFacts miscFacts = await CurrentBootSlot
                 .ReadAsync(ownedCurrent, cancellationToken)
                 .ConfigureAwait(false);

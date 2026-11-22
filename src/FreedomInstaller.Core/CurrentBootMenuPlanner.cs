@@ -498,7 +498,7 @@ public static partial class CurrentBootMenuPlanner
 
             // The current-slot fact is read and matched before any source analysis.
             // CurrentBootSlot verifies the misc control block and can resolve an
-            // all-zero control on a Qualcomm Y700 from the GPT slot flags.
+            // all-zero control on a Qualcomm model from the GPT slot flags.
             CurrentBootSlotFacts observed = await CurrentBootSlot
                 .ReadAsync(backup, ct)
                 .ConfigureAwait(false);

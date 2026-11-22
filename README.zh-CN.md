@@ -22,11 +22,11 @@ ArmadaOS Freedom 安装助手是 [ArmadaOS Freedom](https://github.com/ArmadaOS-
 
 | 设备 | 型号 | 当前支持 |
 |---|---|---|
-| 联想拯救者 Y700 四代 | TB322FC | 机身安装；Windows 版支持维护、卸载、备份与恢复 |
-| 联想拯救者 Y700 五代 | TB323FU | 机身安装；Windows 版支持维护、卸载、备份与恢复 |
-| 联想小新 Pad Pro GT | TB710FU | 机身安装；Windows 版支持全局备份与只读校验 |
+| 联想拯救者 Y700 四代 | TB322FC | 机身安装、维护、卸载、离线升级、全局备份与恢复 |
+| 联想拯救者 Y700 五代 | TB323FU | 机身安装、维护、卸载、离线升级、全局备份与恢复 |
+| 联想小新 Pad Pro GT | TB710FU | 机身安装、全局备份与只读校验；维护、卸载与全局恢复的写入路线已实现（只重签 boot，保留设备的 AVB 元数据），**尚未逐项真机验证，暂未开放** |
 
-**Windows 版**提供上述安装与维护功能；**macOS 版目前只提供机身安装**。TB710FU 的维护、卸载和全局恢复暂未开放，TF／microSD 卡系统安装也暂不提供。
+**Windows 版**与 **macOS 版**（Apple 芯片）功能相同。TB710FU 的维护、卸载和全局恢复在真机验证前暂未开放，TF／microSD 卡系统安装也暂不提供。
 
 不同机型的固件和启动链要求，请查看[机型说明](https://github.com/ArmadaOS-Freedom/armadaos-freedom/blob/main/README.zh-CN.md#设备支持)，并按安装助手检查结果操作。离线升级需要匹配的 Freedom 系统、设备端更新服务和更新包；全局备份要求尚未安装 Linux 的原始分区布局。
 

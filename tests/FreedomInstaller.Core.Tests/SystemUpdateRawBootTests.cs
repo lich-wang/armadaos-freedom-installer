@@ -116,6 +116,7 @@ public sealed class SystemUpdateRawBootTests : IClassFixture<EdlRawGblEnvelopeTe
     [Theory]
     [InlineData("TB322FC", "lenovo,elden", "qcom,sm8750")]
     [InlineData("TB323FU", "lenovo,baldur", "qcom,kaanapali")]
+    [InlineData("TB710FU", "lenovo,tb710fu", "qcom,sm8650")]
     public async Task RawBuilder_UnmarkedRuntimeForMirrorPolicy_FailsBeforeNativeExecution(
         string model, string required, string soc)
     {
@@ -131,21 +132,6 @@ public sealed class SystemUpdateRawBootTests : IClassFixture<EdlRawGblEnvelopeTe
         Assert.Contains("ARMADA_LINUX_MIRROR_V1", exception.Message, StringComparison.Ordinal);
         Assert.Empty(runner.Commands);
         Assert.False(Directory.Exists(input.Output));
-    }
-
-    [Fact]
-    public async Task RawBuilder_Tb710fuUnmarkedRuntime_RemainsOutsideMirrorPolicy()
-    {
-        var tools = ToolClaims.Create();
-        var input = CreateInput(
-            CaseDirectory(), "TB710FU", new[] { "lenovo,tb710fu", "qcom,sm8650" }, tools);
-        string runtime = Unmarked(input.Request.Runtime.Path);
-        SystemUpdateRawRequest request = input.Request with { Runtime = Claim(runtime) };
-
-        SystemUpdateRawBoot built = await EdlRawBootBuilder.BuildSystemUpdateRawAsync(
-            request, new ProcessRunner());
-
-        Assert.Equal("TB710FU", built.Model);
     }
 
     [Fact]

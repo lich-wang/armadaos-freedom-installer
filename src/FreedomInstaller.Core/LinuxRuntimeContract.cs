@@ -6,7 +6,7 @@ namespace FreedomInstaller.Core;
 
 /// <summary>
 /// Byte contract for the kShim runtime that implements the mirrored
-/// TB322FC/TB323FU Linux update policy. The exact literal is retained by the
+/// TB322FC/TB323FU/TB710FU Linux update policy. The exact literal is retained by the
 /// used on-device update gate; it is a compatibility proof only, not
 /// authentication, a device proof or a boot authorization.
 /// </summary>
@@ -16,10 +16,15 @@ internal static class LinuxRuntimeContract
 
     private static readonly byte[] MirrorMarker = "ARMADA_LINUX_MIRROR_V1"u8.ToArray();
 
-    /// <summary>Only the new-system mirrored policy boards require the marker.</summary>
+    /// <summary>
+    /// Only the new-system mirrored policy boards require the marker. The set follows Freedom's
+    /// MIRROR_POLICY_MODELS (models.py); TB710FU joined it with the native mirrored boot_a/boot_b updater, so a
+    /// TB710FU runtime built before that lacks the marker and is refused.
+    /// </summary>
     internal static bool RequiresMirrorMarker(string? model) =>
         string.Equals(model, "TB322FC", StringComparison.Ordinal) ||
-        string.Equals(model, "TB323FU", StringComparison.Ordinal);
+        string.Equals(model, "TB323FU", StringComparison.Ordinal) ||
+        string.Equals(model, "TB710FU", StringComparison.Ordinal);
 
     internal static void RequireMirrorMarker(
         string path, string model, string role, CancellationToken cancellationToken)
