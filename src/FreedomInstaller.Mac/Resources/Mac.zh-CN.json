@@ -6,7 +6,6 @@
   "Static.Environment.Driver": "9008 连接",
   "Static.Environment.Guide": "当前无需连接平板。之后请用数据线把平板接到这台 Mac。",
   "Static.Environment.HomeLink": "运行环境",
-  "Static.Mac.WindowsOnly": "目前只在 Windows 版提供",
   "Dynamic.Mac.Environment.SystemReady": "支持当前 macOS {0}（{1}）。",
   "Dynamic.Mac.Environment.SystemUnsupported": "当前系统不受支持，需要 Apple 芯片的 macOS 12 或更高版本。",
   "Dynamic.Mac.Environment.ToolsReady": "连接工具已准备：adb {0}；9008 工具 {1}；boot 打包工具 {2}。",
